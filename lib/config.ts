@@ -30,7 +30,7 @@ export const CARD_CONFIG = {
   whatsappMessage: 'Hi Deepak! I just saved your contact and wanted to connect.',
 
   // QR code points to the card's live URL
-  qrUrl: 'https://deepak.design/card',
+  qrUrl: 'https://app-amber-phi-95.vercel.app',
 
   // vCard filename (served by /api/contact.vcf)
   vcfFilename: 'Deepak_Kumar.vcf',
