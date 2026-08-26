@@ -68,27 +68,10 @@ END:VCARD`
     type: 'text/vcard',
   })
 
-  // Development logging
-  console.log('navigator.share supported:', !!navigator.share)
-  console.log('navigator.canShare supported:', !!navigator.canShare)
-
-  let canShareFile = false
-  try {
-    if (navigator.canShare) {
-      canShareFile = navigator.canShare({ files: [file] })
-    }
-  } catch (err) {
-    console.error('Error checking canShare:', err)
-  }
-  
-  console.log('vCard file share supported:', canShareFile)
-
-  if (navigator.share && canShareFile) {
+  if (navigator.share) {
     try {
       console.log('Native share attempted')
       await navigator.share({
-        title: `${CARD_CONFIG.firstName} ${CARD_CONFIG.lastName}`,
-        text: 'Save my contact',
         files: [file],
       })
       return true
