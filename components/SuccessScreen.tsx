@@ -19,9 +19,10 @@ const LinkedInIcon = () => (
 
 interface SuccessScreenProps {
   visitorName: string
+  fallbackDownload?: boolean
 }
 
-export default function SuccessScreen({ visitorName }: SuccessScreenProps) {
+export default function SuccessScreen({ visitorName, fallbackDownload }: SuccessScreenProps) {
   const { phone, linkedIn, website, firstName, whatsappMessage } = CARD_CONFIG
 
   const waLink = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`
@@ -42,6 +43,12 @@ export default function SuccessScreen({ visitorName }: SuccessScreenProps) {
         {firstName}'s contact was sent to your phone.{'\n'}
         What's next, {displayName}?
       </p>
+
+      {fallbackDownload && (
+        <p className="success-sub" style={{ fontSize: '0.85rem', color: 'var(--color-primary)', marginTop: '-8px' }}>
+          Contact file downloaded. Open it to save the contact.
+        </p>
+      )}
 
       {/* Action buttons */}
       <div style={{ width: '100%' }}>

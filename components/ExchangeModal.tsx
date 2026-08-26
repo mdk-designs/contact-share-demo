@@ -43,8 +43,90 @@ const EMPTY: FormData = { name: '', phone: '', email: '', organization: '' }
  * │  Android Chrome launches the system Contacts save intent.      │
  * └─────────────────────────────────────────────────────────────────┘
  */
-function triggerNativeContactImport() {
-  // Remove any stale iframe first
+async function triggerNativeContactImport(): Promise<boolean> {
+  const ua = navigator.userAgent || ''
+  const isDesktop = !(/Mobi|Android|iPhone|iPad|iPod/i.test(ua))
+  const isAndroid = /Android/i.test(ua)
+
+  if (isDesktop) {
+    // 1. DESKTOP: Return false to show the large QR code on the success screen
+    return false
+  }
+
+  // 2. ANDROID: Attempt deep link intent directly to Contacts app
+  if (isAndroid) {
+    const name = encodeURIComponent(`${CARD_CONFIG.firstName} ${CARD_CONFIG.lastName}`)
+    const phone = encodeURIComponent(CARD_CONFIG.phoneDisplay)
+    const email = encodeURIComponent(CARD_CONFIG.email)
+    const company = encodeURIComponent(CARD_CONFIG.organization)
+    const title = encodeURIComponent(CARD_CONFIG.title)
+    const notes = encodeURIComponent(`Website: ${CARD_CONFIG.website}\nLocation: ${CARD_CONFIG.location}`)
+    const fallbackUrl = encodeURIComponent(`${window.location.origin}/api/contact.vcf?t=${Date.now()}`)
+
+    // Use strict Android Chrome intent syntax
+    const intentUrl = `intent://#Intent;action=android.intent.action.INSERT;type=vnd.android.cursor.dir/contact;category=android.intent.category.DEFAULT;S.name=${name};S.phone=${phone};S.email=${email};S.company=${company};S.job_title=${title};S.notes=${notes};S.browser_fallback_url=${fallbackUrl};end`
+    
+    // Assigning to location.href is more reliable for intents than an anchor click
+    window.location.href = intentUrl
+    
+    // Return false because it's technically falling back to the OS or the fallback URL,
+    // so we want the UI to show the "Contact file downloaded" message just in case the intent fails.
+    return false
+  }
+
+  // Generate vCard data
+  const vCard = `BEGIN:VCARD
+VERSION:3.0
+FN:${CARD_CONFIG.firstName} ${CARD_CONFIG.lastName}
+N:${CARD_CONFIG.lastName};${CARD_CONFIG.firstName};;;
+TEL;TYPE=CELL:${CARD_CONFIG.phone}
+EMAIL:${CARD_CONFIG.email}
+ORG:${CARD_CONFIG.organization}
+TITLE:${CARD_CONFIG.title}
+URL:${CARD_CONFIG.website}
+END:VCARD`
+
+  const file = new File([vCard], CARD_CONFIG.vcfFilename, {
+    type: 'text/vcard',
+  })
+
+  // Development logging
+  console.log('navigator.share supported:', !!navigator.share)
+  console.log('navigator.canShare supported:', !!navigator.canShare)
+
+  let canShareFile = false
+  try {
+    if (navigator.canShare) {
+      canShareFile = navigator.canShare({ files: [file] })
+    }
+  } catch (err) {
+    console.error('Error checking canShare:', err)
+  }
+  
+  console.log('vCard file share supported:', canShareFile)
+
+  if (navigator.share && canShareFile) {
+    try {
+      console.log('Native share attempted')
+      await navigator.share({
+        title: `${CARD_CONFIG.firstName} ${CARD_CONFIG.lastName}`,
+        text: 'Save my contact',
+        files: [file],
+      })
+      return true
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Native share cancelled')
+        return true // User aborted, do not fallback to download
+      }
+      console.error('Native share failed:', error)
+      // On other errors, continue to fallback below
+    }
+  }
+
+  console.log('Falling back to vCard download')
+
+  // FALLBACK: Download .vcf
   const existing = document.getElementById('vcf-loader')
   if (existing) existing.remove()
 
@@ -52,12 +134,12 @@ function triggerNativeContactImport() {
   iframe.id = 'vcf-loader'
   iframe.style.cssText =
     'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;opacity:0;pointer-events:none;'
-  // Bust cache with timestamp so the correct vcf is always fetched
+  // Bust cache
   iframe.src = `/api/contact.vcf?t=${Date.now()}`
   document.body.appendChild(iframe)
 
-  // Clean up after iOS has had time to intercept
   setTimeout(() => iframe.remove(), 8000)
+  return false
 }
 
 export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalProps) {
@@ -65,6 +147,7 @@ export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalP
   const [errors, setErrors] = useState<FormErrors>({})
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [fallbackDownload, setFallbackDownload] = useState(false)
 
   const firstInputRef = useRef<HTMLInputElement>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
@@ -94,8 +177,9 @@ export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalP
   const handleClose = useCallback(() => {
     onClose()
     // Reset after the slide-down animation completes
-    setTimeout(() => { setForm(EMPTY); setErrors({}); setSubmitted(false) }, 450)
+    setTimeout(() => { setForm(EMPTY); setErrors({}); setSubmitted(false); setFallbackDownload(false) }, 450)
   }, [onClose])
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -120,21 +204,21 @@ export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalP
 
     setLoading(true)
     try {
-      // 1. Save visitor's contact to Supabase
-      const { error } = await insertLead({
+      // 1. Trigger native OS contact import
+      const nativelyShared = await triggerNativeContactImport()
+      if (!nativelyShared) {
+        setFallbackDownload(true)
+      }
+
+      // 2. Save visitor's contact to Supabase in background to keep UI fast
+      insertLead({
         name: form.name.trim(),
         phone: form.phone.trim(),
         email: form.email.trim() || undefined,
         organization: form.organization.trim() || undefined,
+      }).then(({ error }) => {
+        if (error) console.error('[Supabase] Insert error:', error)
       })
-
-      if (error) {
-        // Log but don't block — vCard still fires
-        console.error('[Supabase] Insert error:', error)
-      }
-
-      // 2. Trigger native OS contact import via hidden iframe
-      triggerNativeContactImport()
 
       // 3. Transition to success screen
       setSubmitted(true)
@@ -178,7 +262,7 @@ export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalP
 
         {/* ─── SUCCESS SCREEN ─── */}
         {submitted ? (
-          <SuccessScreen visitorName={form.name} />
+          <SuccessScreen visitorName={form.name} fallbackDownload={fallbackDownload} />
         ) : (
           <>
             {/* ─── HEADER ─── */}
