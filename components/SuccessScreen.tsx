@@ -38,15 +38,23 @@ export default function SuccessScreen({ visitorName, fallbackDownload }: Success
         </div>
       </div>
 
-      <h3 className="success-title">Contact Saved!</h3>
-      <p className="success-sub">
-        {firstName}'s contact was sent to your phone.{'\n'}
-        What's next, {displayName}?
-      </p>
+      <h3 className="success-title">{fallbackDownload ? 'Contact Ready!' : 'Contact Saved!'}</h3>
+      
+      {fallbackDownload ? (
+        <p className="success-sub">
+          {firstName}'s contact card is ready to add to your phone.
+        </p>
+      ) : (
+        <p className="success-sub">
+          {firstName}'s contact was sent to your phone.{'\n'}
+          What's next, {displayName}?
+        </p>
+      )}
 
       {fallbackDownload && (
         <p className="success-sub" style={{ fontSize: '0.85rem', color: 'var(--color-primary)', marginTop: '-8px' }}>
-          Contact file downloaded. Open it to save the contact.
+          Contact file downloaded. Open it to save the contact.<br/>
+          <span style={{ opacity: 0.8 }}>Having trouble? Open your Downloads folder and tap {CARD_CONFIG.vcfFilename}.</span>
         </p>
       )}
 
