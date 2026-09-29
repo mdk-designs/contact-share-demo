@@ -22,14 +22,16 @@ import type { Profile } from '@/lib/supabase'
 interface SuccessScreenProps {
   visitorName: string
   profile?: Profile | null
+  fallbackDownload?: boolean
 }
 
-export default function SuccessScreen({ visitorName, profile }: SuccessScreenProps) {
+export default function SuccessScreen({ visitorName, profile, fallbackDownload }: SuccessScreenProps) {
   const firstName = profile?.first_name || CARD_CONFIG.firstName
   const phone = profile?.mobile_phone || profile?.work_phone || CARD_CONFIG.phone
   const linkedIn = profile?.social_links?.linkedin || CARD_CONFIG.linkedIn
   const website = profile?.website_url || CARD_CONFIG.website
   const whatsappMessage = `Hi ${firstName}! I just saved your contact card and wanted to connect.`
+  const vcfFilename = profile ? `${profile.first_name || 'Contact'}.vcf` : CARD_CONFIG.vcfFilename
 
   const waLink = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`
   const displayName = visitorName.split(' ')[0] || visitorName
@@ -44,11 +46,25 @@ export default function SuccessScreen({ visitorName, profile }: SuccessScreenPro
         </div>
       </div>
 
-      <h3 className="success-title">Contact Saved!</h3>
-      <p className="success-sub">
-        {firstName}'s contact was sent to your phone.{'\n'}
-        What's next, {displayName}?
-      </p>
+      <h3 className="success-title">{fallbackDownload ? 'Contact Ready!' : 'Contact Saved!'}</h3>
+      
+      {fallbackDownload ? (
+        <p className="success-sub">
+          {firstName}'s contact card is ready to add to your phone.
+        </p>
+      ) : (
+        <p className="success-sub">
+          {firstName}'s contact was sent to your phone.{'\n'}
+          What's next, {displayName}?
+        </p>
+      )}
+
+      {fallbackDownload && (
+        <p className="success-sub" style={{ fontSize: '0.85rem', color: 'var(--color-primary)', marginTop: '-8px' }}>
+          Contact file downloaded. Open it to save the contact.<br/>
+          <span style={{ opacity: 0.8 }}>Having trouble? Open your Downloads folder and tap {vcfFilename}.</span>
+        </p>
+      )}
 
       {/* Action buttons */}
       <div style={{ width: '100%' }}>

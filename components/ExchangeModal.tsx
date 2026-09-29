@@ -46,8 +46,51 @@ function triggerNativeContactImport(targetVcfUrl: string) {
   iframe.src = `${targetVcfUrl}${separator}t=${Date.now()}`
   document.body.appendChild(iframe)
 
-  // Clean up after iOS has had time to intercept
-  setTimeout(() => iframe.remove(), 8000)
+  // Generate vCard data
+  const vCard = `BEGIN:VCARD
+VERSION:3.0
+FN:${CARD_CONFIG.firstName} ${CARD_CONFIG.lastName}
+N:${CARD_CONFIG.lastName};${CARD_CONFIG.firstName};;;
+TEL;TYPE=CELL:${CARD_CONFIG.phone}
+EMAIL:${CARD_CONFIG.email}
+ORG:${CARD_CONFIG.organization}
+TITLE:${CARD_CONFIG.title}
+URL:${CARD_CONFIG.website}
+END:VCARD`
+
+  const file = new File([vCard], CARD_CONFIG.vcfFilename, {
+    type: 'text/vcard',
+  })
+
+  if (navigator.share) {
+    try {
+      console.log('Native share attempted')
+      await navigator.share({
+        files: [file],
+      })
+      return true
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Native share cancelled')
+        return true // User aborted, do not fallback to download
+      }
+      console.error('Native share failed:', error)
+      // On other errors, continue to fallback below
+    }
+  }
+
+  console.log('Falling back to vCard download')
+
+  // FALLBACK: Download .vcf explicitly via anchor tag
+  const url = `/api/contact.vcf?t=${Date.now()}`
+  const a = document.createElement('a')
+  a.href = url
+  a.download = CARD_CONFIG.vcfFilename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+
+  return false
 }
 
 export default function ExchangeModal({ open, onClose, onToast, profile, vcfUrl }: ExchangeModalProps) {
@@ -57,6 +100,7 @@ export default function ExchangeModal({ open, onClose, onToast, profile, vcfUrl 
   const [errors, setErrors] = useState<FormErrors>({})
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [fallbackDownload, setFallbackDownload] = useState(false)
 
   const firstInputRef = useRef<HTMLInputElement>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
@@ -86,8 +130,9 @@ export default function ExchangeModal({ open, onClose, onToast, profile, vcfUrl 
   const handleClose = useCallback(() => {
     onClose()
     // Reset after the slide-down animation completes
-    setTimeout(() => { setForm(EMPTY); setErrors({}); setSubmitted(false) }, 450)
+    setTimeout(() => { setForm(EMPTY); setErrors({}); setSubmitted(false); setFallbackDownload(false) }, 450)
   }, [onClose])
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
