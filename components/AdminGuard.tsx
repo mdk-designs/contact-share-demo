@@ -70,7 +70,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
             <ShieldAlert className="h-8 w-8" />
           </div>
 
-          <Badge variant="outline" className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-rose-600 border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40">
+          <Badge variant="outline" className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-200 border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/70">
             Access Restricted · Admin Only
           </Badge>
 
