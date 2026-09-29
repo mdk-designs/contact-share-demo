@@ -90,7 +90,10 @@ export default function AdminUserDetailPage({
     async function load() {
       setLoading(true)
       try {
-        const found = await getProfileById(userId)
+        const [found, userLeads] = await Promise.all([
+          getProfileById(userId),
+          getLeads(userId),
+        ])
         if (found) {
           setProfile(found)
           setForm({
@@ -111,9 +114,6 @@ export default function AdminUserDetailPage({
             github: found.social_links?.github || '',
             twitter: found.social_links?.twitter || '',
           })
-
-          // Load user's leads
-          const userLeads = await getLeads(found.id)
           setLeads(userLeads)
         }
       } catch (err) {

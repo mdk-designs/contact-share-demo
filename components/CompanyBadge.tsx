@@ -1,12 +1,12 @@
+import { memo } from 'react'
 import { CARD_CONFIG } from '@/lib/config'
-
 import type { Profile } from '@/lib/supabase'
 
 interface CompanyBadgeProps {
   profile?: Profile | null
 }
 
-export default function CompanyBadge({ profile }: CompanyBadgeProps) {
+function CompanyBadgeComponent({ profile }: CompanyBadgeProps) {
   const organization = profile?.company_name || CARD_CONFIG.organization
   const companyInitials =
     organization
@@ -42,3 +42,6 @@ export default function CompanyBadge({ profile }: CompanyBadgeProps) {
     </section>
   )
 }
+
+const CompanyBadge = memo(CompanyBadgeComponent)
+export default CompanyBadge

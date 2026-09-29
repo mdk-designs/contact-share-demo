@@ -1,9 +1,15 @@
+import { cache } from 'react'
 import { Metadata } from 'next'
 import { headers } from 'next/headers'
 import Link from 'next/link'
 import { resolveProfileWithFallback, logQrScan } from '@/lib/supabase'
 import ClientCardView from '@/components/ClientCardView'
 import { CreditCard, ArrowLeft } from 'lucide-react'
+
+// Deduplicate DB lookups during the same server request lifecycle
+const getCachedProfile = cache(async (slug: string) => {
+  return resolveProfileWithFallback(slug)
+})
 
 export async function generateMetadata({
   params,
@@ -12,7 +18,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params
   const cleanSlug = decodeURIComponent(slug).toLowerCase()
-  const profile = await resolveProfileWithFallback(cleanSlug)
+  const profile = await getCachedProfile(cleanSlug)
 
   if (!profile) {
     return {
@@ -61,8 +67,8 @@ export default async function PublicCardPage({
   const { slug } = await params
   const cleanSlug = decodeURIComponent(slug).toLowerCase()
 
-  // 1. Fetch profile from Supabase (or demo fallback)
-  const profile = await resolveProfileWithFallback(cleanSlug)
+  // 1. Fetch profile from Supabase (or demo fallback, deduplicated via React.cache)
+  const profile = await getCachedProfile(cleanSlug)
 
   // 2. Telemetry: log server-side scan event asynchronously
   if (profile?.id) {

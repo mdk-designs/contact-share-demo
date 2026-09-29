@@ -1,6 +1,5 @@
 'use client'
-
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Mail, Search, Download, RefreshCw } from 'lucide-react'
 import { getLeads, type Lead } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
@@ -11,7 +10,7 @@ export default function MemberLeadsPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const data = await getLeads(profile?.id)
@@ -21,20 +20,23 @@ export default function MemberLeadsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [profile?.id])
 
   useEffect(() => {
     loadData()
-  }, [profile?.id])
+  }, [loadData])
 
-  const filtered = leads.filter((l) => {
-    const term = search.toLowerCase()
-    const name = (l.visitor_name || l.name || '').toLowerCase()
-    const email = (l.visitor_email || l.email || '').toLowerCase()
-    const company = (l.visitor_company || l.organization || '').toLowerCase()
-    const phone = (l.visitor_phone || l.phone || '').toLowerCase()
-    return name.includes(term) || email.includes(term) || company.includes(term) || phone.includes(term)
-  })
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim()
+    if (!term) return leads
+    return leads.filter((l) => {
+      const name = (l.visitor_name || l.name || '').toLowerCase()
+      const email = (l.visitor_email || l.email || '').toLowerCase()
+      const company = (l.visitor_company || l.organization || '').toLowerCase()
+      const phone = (l.visitor_phone || l.phone || '').toLowerCase()
+      return name.includes(term) || email.includes(term) || company.includes(term) || phone.includes(term)
+    })
+  }, [leads, search])
 
   const handleExportCSV = () => {
     if (filtered.length === 0) return

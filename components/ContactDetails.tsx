@@ -29,6 +29,7 @@ const MapPinIcon = () => (
   </svg>
 )
 
+import { memo, useMemo } from 'react'
 import type { Profile } from '@/lib/supabase'
 
 interface ContactDetailsProps {
@@ -44,58 +45,62 @@ interface ContactRowItem {
   href: string
 }
 
-export default function ContactDetails({ profile }: ContactDetailsProps) {
+function ContactDetailsComponent({ profile }: ContactDetailsProps) {
   const phone = profile?.mobile_phone || profile?.work_phone || CARD_CONFIG.phone
   const phoneDisplay = phone
   const email = profile?.work_email || CARD_CONFIG.email
   const website = profile?.website_url || CARD_CONFIG.website
   const location = profile?.address || CARD_CONFIG.location
 
-  const rows: ContactRowItem[] = []
+  const rows = useMemo<ContactRowItem[]>(() => {
+    const list: ContactRowItem[] = []
 
-  if (phone) {
-    rows.push({
-      id: 'cd-phone',
-      icon: <PhoneIcon />,
-      iconClass: 'icon-green',
-      label: 'Phone',
-      value: phoneDisplay,
-      href: `tel:${phone}`,
-    })
-  }
+    if (phone) {
+      list.push({
+        id: 'cd-phone',
+        icon: <PhoneIcon />,
+        iconClass: 'icon-green',
+        label: 'Phone',
+        value: phoneDisplay,
+        href: `tel:${phone}`,
+      })
+    }
 
-  if (email) {
-    rows.push({
-      id: 'cd-email',
-      icon: <MailIcon />,
-      iconClass: 'icon-gold',
-      label: 'Work Email',
-      value: email,
-      href: `mailto:${email}`,
-    })
-  }
+    if (email) {
+      list.push({
+        id: 'cd-email',
+        icon: <MailIcon />,
+        iconClass: 'icon-gold',
+        label: 'Work Email',
+        value: email,
+        href: `mailto:${email}`,
+      })
+    }
 
-  if (website) {
-    rows.push({
-      id: 'cd-website',
-      icon: <GlobeIcon />,
-      iconClass: 'icon-blue',
-      label: 'Portfolio / Website',
-      value: website.replace(/^https?:\/\//, ''),
-      href: website.startsWith('http') ? website : `https://${website}`,
-    })
-  }
+    if (website) {
+      list.push({
+        id: 'cd-website',
+        icon: <GlobeIcon />,
+        iconClass: 'icon-blue',
+        label: 'Portfolio / Website',
+        value: website.replace(/^https?:\/\//, ''),
+        href: website.startsWith('http') ? website : `https://${website}`,
+      })
+    }
 
-  if (location) {
-    rows.push({
-      id: 'cd-location',
-      icon: <MapPinIcon />,
-      iconClass: 'icon-purple',
-      label: 'Location',
-      value: location,
-      href: `https://maps.google.com/?q=${encodeURIComponent(location)}`,
-    })
-  }
+    if (location) {
+      list.push({
+        id: 'cd-location',
+        icon: <MapPinIcon />,
+        iconClass: 'icon-purple',
+        label: 'Location',
+        value: location,
+        href: `https://maps.google.com/?q=${encodeURIComponent(location)}`,
+      })
+    }
+
+    return list
+  }, [phone, phoneDisplay, email, website, location])
 
   return (
     <section aria-label="Contact details">
@@ -124,3 +129,6 @@ export default function ContactDetails({ profile }: ContactDetailsProps) {
     </section>
   )
 }
+
+const ContactDetails = memo(ContactDetailsComponent)
+export default ContactDetails

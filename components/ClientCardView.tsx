@@ -1,13 +1,18 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import CardHero from '@/components/CardHero'
 import ContactDetails from '@/components/ContactDetails'
 import QRCodeSection from '@/components/QRCodeSection'
 import CompanyBadge from '@/components/CompanyBadge'
-import ExchangeModal from '@/components/ExchangeModal'
 import Toast from '@/components/Toast'
 import { ArrowRightLeft, Download, Share2, Check, ShieldCheck } from 'lucide-react'
+
+// Dynamically bundle and defer modal code until requested
+const ExchangeModal = dynamic(() => import('@/components/ExchangeModal'), {
+  ssr: false,
+})
 import type { Profile } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -180,13 +185,15 @@ export default function ClientCardView({ initialProfile, slug }: ClientCardViewP
       </div>
 
       {/* ── Two-Way Contact Exchange Modal ── */}
-      <ExchangeModal
-        open={modalOpen}
-        onClose={closeModal}
-        onToast={showToast}
-        profile={profile}
-        vcfUrl={vcfUrl}
-      />
+      {modalOpen ? (
+        <ExchangeModal
+          open={modalOpen}
+          onClose={closeModal}
+          onToast={showToast}
+          profile={profile}
+          vcfUrl={vcfUrl}
+        />
+      ) : null}
 
       {/* ── Notification Toast ── */}
       <Toast visible={toast.visible} type={toast.type} message={toast.message} />

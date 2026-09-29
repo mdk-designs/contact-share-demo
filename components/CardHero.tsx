@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { CARD_CONFIG } from '@/lib/config'
 import ThemeToggle from '@/components/ThemeToggle'
 import type { Profile } from '@/lib/supabase'
@@ -35,7 +36,7 @@ interface CardHeroProps {
   profile?: Profile | null
 }
 
-export default function CardHero({ profile }: CardHeroProps) {
+function CardHeroComponent({ profile }: CardHeroProps) {
   const firstName = profile?.first_name || CARD_CONFIG.firstName
   const lastName = profile?.last_name || CARD_CONFIG.lastName
   const title = profile?.job_title || profile?.headline || CARD_CONFIG.title
@@ -82,31 +83,34 @@ export default function CardHero({ profile }: CardHeroProps) {
 
       {/* Social strip */}
       <nav className="social-strip" aria-label="Social profiles">
-        {linkedIn && (
+        {linkedIn ? (
           <a href={linkedIn} target="_blank" rel="noopener noreferrer"
              className="social-btn" aria-label="LinkedIn profile" id="hero-linkedin">
             <LinkedInSVG />
           </a>
-        )}
-        {github && (
+        ) : null}
+        {github ? (
           <a href={github} target="_blank" rel="noopener noreferrer"
              className="social-btn" aria-label="GitHub profile" id="hero-github">
             <GithubSVG />
           </a>
-        )}
-        {website && (
+        ) : null}
+        {website ? (
           <a href={website} target="_blank" rel="noopener noreferrer"
              className="social-btn" aria-label="Portfolio website" id="hero-portfolio">
             <GlobeSVG />
           </a>
-        )}
-        {twitter && (
+        ) : null}
+        {twitter ? (
           <a href={twitter} target="_blank" rel="noopener noreferrer"
              className="social-btn" aria-label="X / Twitter profile" id="hero-twitter">
             <XSVG />
           </a>
-        )}
+        ) : null}
       </nav>
     </header>
   )
 }
+
+const CardHero = memo(CardHeroComponent)
+export default CardHero

@@ -136,43 +136,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (client) {
       try {
-        // 1. Try querying public.profiles by user_id (the auth foreign key)
-        const { data: byUserId, error: userErr } = await client
+        // Query by user_id, primary key id, or work_email in a single unified request
+        const queryFilter = targetEmail
+          ? `user_id.eq.${targetUser.id},id.eq.${targetUser.id},work_email.eq.${targetEmail}`
+          : `user_id.eq.${targetUser.id},id.eq.${targetUser.id}`
+
+        const { data: matchedProfile, error: profileErr } = await client
           .from('profiles')
           .select('*')
-          .eq('user_id', targetUser.id)
+          .or(queryFilter)
+          .limit(1)
           .maybeSingle()
 
-        if (!userErr && byUserId) {
-          return byUserId as Profile
-        }
-
-        // 2. Try querying public.profiles by primary key id
-        const { data: byId, error: idErr } = await client
-          .from('profiles')
-          .select('*')
-          .eq('id', targetUser.id)
-          .maybeSingle()
-
-        if (!idErr && byId) {
-          return byId as Profile
-        }
-
-        // 3. Try querying by work_email if ID didn't match
-        if (targetEmail) {
-          const { data: byEmail, error: emailErr } = await client
-            .from('profiles')
-            .select('*')
-            .eq('work_email', targetEmail)
-            .maybeSingle()
-
-          if (!emailErr && byEmail) {
-            // Auto-link user_id if currently null
-            if (!byEmail.user_id) {
-              await client.from('profiles').update({ user_id: targetUser.id }).eq('id', byEmail.id)
-            }
-            return byEmail as Profile
+        if (!profileErr && matchedProfile) {
+          // Auto-link user_id non-blockingly if not set
+          if (!matchedProfile.user_id) {
+            client.from('profiles').update({ user_id: targetUser.id }).eq('id', matchedProfile.id).then(() => {})
           }
+          return matchedProfile as Profile
         }
       } catch (e) {
         console.warn('[AuthContext] Database profile lookup notice:', e)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import {
   Mail,
@@ -83,19 +83,22 @@ export default function AdminLeadsPage() {
     loadData()
   }, [])
 
-  const filtered = leads.filter((l) => {
-    const term = search.toLowerCase()
-    const name = (l.visitor_name || l.name || '').toLowerCase()
-    const email = (l.visitor_email || l.email || '').toLowerCase()
-    const company = (l.visitor_company || l.organization || '').toLowerCase()
-    const phone = (l.visitor_phone || l.phone || '').toLowerCase()
-    return (
-      name.includes(term) ||
-      email.includes(term) ||
-      company.includes(term) ||
-      phone.includes(term)
-    )
-  })
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim()
+    if (!term) return leads
+    return leads.filter((l) => {
+      const name = (l.visitor_name || l.name || '').toLowerCase()
+      const email = (l.visitor_email || l.email || '').toLowerCase()
+      const company = (l.visitor_company || l.organization || '').toLowerCase()
+      const phone = (l.visitor_phone || l.phone || '').toLowerCase()
+      return (
+        name.includes(term) ||
+        email.includes(term) ||
+        company.includes(term) ||
+        phone.includes(term)
+      )
+    })
+  }, [leads, search])
 
   const handleExportCSV = () => {
     if (filtered.length === 0) return

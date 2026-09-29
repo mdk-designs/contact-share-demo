@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import {
   Users,
@@ -93,17 +93,18 @@ export default function AdminUsersPage() {
     loadData()
   }, [])
 
-  const filtered = profiles.filter((p) => {
-    const term = search.toLowerCase()
-    return (
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim()
+    if (!term) return profiles
+    return profiles.filter((p) => (
       p.first_name.toLowerCase().includes(term) ||
       p.last_name.toLowerCase().includes(term) ||
       p.slug.toLowerCase().includes(term) ||
       p.work_email.toLowerCase().includes(term) ||
       (p.job_title && p.job_title.toLowerCase().includes(term)) ||
       (p.company_name && p.company_name.toLowerCase().includes(term))
-    )
-  })
+    ))
+  }, [profiles, search])
 
   // Toggle user active status
   const handleToggleStatus = async (profile: Profile) => {

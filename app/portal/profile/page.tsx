@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import CardHero from '@/components/CardHero'
 import ContactDetails from '@/components/ContactDetails'
@@ -113,29 +113,32 @@ export default function MemberProfileEditorPage() {
     }
   }
 
-  const previewProfile: Profile = {
-    id: currentProfileId,
-    slug: form.slug,
-    role: 'member',
-    first_name: form.firstName,
-    last_name: form.lastName,
-    job_title: form.jobTitle,
-    company_name: form.companyName,
-    department: form.department,
-    work_email: form.workEmail,
-    mobile_phone: form.mobilePhone,
-    work_phone: form.mobilePhone,
-    website_url: form.websiteUrl,
-    address: form.address,
-    bio: form.bio,
-    avatar_url: form.avatarUrl || undefined,
-    is_active: true,
-    social_links: {
-      linkedin: form.linkedin,
-      github: form.github,
-      twitter: form.twitter,
-    },
-  }
+  const previewProfile = useMemo<Profile>(
+    () => ({
+      id: currentProfileId,
+      slug: form.slug,
+      role: 'member',
+      first_name: form.firstName,
+      last_name: form.lastName,
+      job_title: form.jobTitle,
+      company_name: form.companyName,
+      department: form.department,
+      work_email: form.workEmail,
+      mobile_phone: form.mobilePhone,
+      work_phone: form.mobilePhone,
+      website_url: form.websiteUrl,
+      address: form.address,
+      bio: form.bio,
+      avatar_url: form.avatarUrl || undefined,
+      is_active: true,
+      social_links: {
+        linkedin: form.linkedin,
+        github: form.github,
+        twitter: form.twitter,
+      },
+    }),
+    [currentProfileId, form]
+  )
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()

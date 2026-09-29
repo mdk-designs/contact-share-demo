@@ -1,14 +1,18 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import CardHero from '@/components/CardHero'
 import ContactDetails from '@/components/ContactDetails'
 import QRCodeSection from '@/components/QRCodeSection'
 import CompanyBadge from '@/components/CompanyBadge'
-import ExchangeModal from '@/components/ExchangeModal'
 import Toast from '@/components/Toast'
 import ThemeToggle from '@/components/ThemeToggle'
+
+const ExchangeModal = dynamic(() => import('@/components/ExchangeModal'), {
+  ssr: false,
+})
 import {
   ArrowRightLeft,
   Shield,
@@ -157,7 +161,9 @@ export default function CardPreviewPage() {
       </div>
 
       {/* ── Modal ── */}
-      <ExchangeModal open={modalOpen} onClose={closeModal} onToast={showToast} />
+      {modalOpen ? (
+        <ExchangeModal open={modalOpen} onClose={closeModal} onToast={showToast} />
+      ) : null}
 
       {/* ── Toast ── */}
       <Toast visible={toast.visible} type={toast.type} message={toast.message} />

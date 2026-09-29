@@ -1,29 +1,23 @@
-'use client'
-
+import { memo } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { CARD_CONFIG } from '@/lib/config'
-
 import type { Profile } from '@/lib/supabase'
-import { useEffect, useState } from 'react'
 
 interface QRCodeSectionProps {
   profile?: Profile | null
   targetUrl?: string
 }
 
-export default function QRCodeSection({ profile, targetUrl }: QRCodeSectionProps) {
+function QRCodeSectionComponent({ profile, targetUrl }: QRCodeSectionProps) {
   const firstName = profile?.first_name || CARD_CONFIG.firstName
   const lastName = profile?.last_name || CARD_CONFIG.lastName
-  const [resolvedUrl, setResolvedUrl] = useState(targetUrl || CARD_CONFIG.qrUrl)
 
-  useEffect(() => {
-    if (targetUrl) {
-      setResolvedUrl(targetUrl)
-    } else if (profile?.slug) {
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app-amber-phi-95.vercel.app'
-      setResolvedUrl(`${origin}/c/${profile.slug}`)
-    }
-  }, [profile?.slug, targetUrl])
+  // Derive resolved URL directly during render without extra state/effect
+  const resolvedUrl = targetUrl
+    ? targetUrl
+    : profile?.slug
+      ? `${typeof window !== 'undefined' ? window.location.origin : 'https://app-amber-phi-95.vercel.app'}/c/${profile.slug}`
+      : CARD_CONFIG.qrUrl
 
   return (
     <section aria-label="QR Code" id="qr-section">
@@ -58,3 +52,6 @@ export default function QRCodeSection({ profile, targetUrl }: QRCodeSectionProps
     </section>
   )
 }
+
+const QRCodeSection = memo(QRCodeSectionComponent)
+export default QRCodeSection
