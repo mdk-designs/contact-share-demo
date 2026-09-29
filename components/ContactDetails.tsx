@@ -29,63 +29,93 @@ const MapPinIcon = () => (
   </svg>
 )
 
-const contactRows = [
-  {
-    id: 'cd-phone',
-    icon: <PhoneIcon />,
-    iconClass: 'icon-green',
-    label: 'Phone',
-    value: (c: typeof CARD_CONFIG) => c.phoneDisplay,
-    href: (c: typeof CARD_CONFIG) => `tel:${c.phone}`,
-  },
-  {
-    id: 'cd-email',
-    icon: <MailIcon />,
-    iconClass: 'icon-gold',
-    label: 'Work Email',
-    value: (c: typeof CARD_CONFIG) => c.email,
-    href: (c: typeof CARD_CONFIG) => `mailto:${c.email}`,
-  },
-  {
-    id: 'cd-website',
-    icon: <GlobeIcon />,
-    iconClass: 'icon-blue',
-    label: 'Portfolio',
-    value: (c: typeof CARD_CONFIG) => c.website.replace('https://', ''),
-    href: (c: typeof CARD_CONFIG) => c.website,
-  },
-  {
-    id: 'cd-location',
-    icon: <MapPinIcon />,
-    iconClass: 'icon-purple',
-    label: 'Location',
-    value: (c: typeof CARD_CONFIG) => c.location,
-    href: (c: typeof CARD_CONFIG) => `https://maps.google.com/?q=${encodeURIComponent(c.location)}`,
-  },
-]
+import type { Profile } from '@/lib/supabase'
 
-export default function ContactDetails() {
-  const cfg = CARD_CONFIG
+interface ContactDetailsProps {
+  profile?: Profile | null
+}
+
+interface ContactRowItem {
+  id: string
+  icon: React.ReactNode
+  iconClass: string
+  label: string
+  value: string
+  href: string
+}
+
+export default function ContactDetails({ profile }: ContactDetailsProps) {
+  const phone = profile?.mobile_phone || profile?.work_phone || CARD_CONFIG.phone
+  const phoneDisplay = phone
+  const email = profile?.work_email || CARD_CONFIG.email
+  const website = profile?.website_url || CARD_CONFIG.website
+  const location = profile?.address || CARD_CONFIG.location
+
+  const rows: ContactRowItem[] = []
+
+  if (phone) {
+    rows.push({
+      id: 'cd-phone',
+      icon: <PhoneIcon />,
+      iconClass: 'icon-green',
+      label: 'Phone',
+      value: phoneDisplay,
+      href: `tel:${phone}`,
+    })
+  }
+
+  if (email) {
+    rows.push({
+      id: 'cd-email',
+      icon: <MailIcon />,
+      iconClass: 'icon-gold',
+      label: 'Work Email',
+      value: email,
+      href: `mailto:${email}`,
+    })
+  }
+
+  if (website) {
+    rows.push({
+      id: 'cd-website',
+      icon: <GlobeIcon />,
+      iconClass: 'icon-blue',
+      label: 'Portfolio / Website',
+      value: website.replace(/^https?:\/\//, ''),
+      href: website.startsWith('http') ? website : `https://${website}`,
+    })
+  }
+
+  if (location) {
+    rows.push({
+      id: 'cd-location',
+      icon: <MapPinIcon />,
+      iconClass: 'icon-purple',
+      label: 'Location',
+      value: location,
+      href: `https://maps.google.com/?q=${encodeURIComponent(location)}`,
+    })
+  }
 
   return (
     <section aria-label="Contact details">
       <div className="glass-card">
         <p className="section-label">Contact</p>
         <div className="divider" />
-        {contactRows.map((row) => (
+        {rows.map((row) => (
           <a
             key={row.id}
             id={row.id}
-            href={row.href(cfg)}
+            href={row.href}
             className="contact-row"
-            target={row.href(cfg).startsWith('http') ? '_blank' : undefined}
-            rel={row.href(cfg).startsWith('http') ? 'noopener noreferrer' : undefined}
-            aria-label={`${row.label}: ${row.value(cfg)}`}
+            target={row.href.startsWith('http') ? '_blank' : undefined}
+            rel={row.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+            aria-label={`${row.label}: ${row.value}`}
           >
             <div className={`contact-icon ${row.iconClass}`}>{row.icon}</div>
             <div className="contact-meta">
               <p className="contact-meta-label">{row.label}</p>
-              <p className="contact-meta-value">{row.value(cfg)}</p>
+              <p className="contact-meta-value">{row.value}</p>
             </div>
             <ChevronRight size={14} className="row-arrow" aria-hidden="true" />
           </a>

@@ -1,4 +1,6 @@
 import { CARD_CONFIG } from '@/lib/config'
+import ThemeToggle from '@/components/ThemeToggle'
+import type { Profile } from '@/lib/supabase'
 
 /* ── Inline brand SVGs (lucide-react v1 removed brand icons) ── */
 const LinkedInSVG = () => (
@@ -29,22 +31,45 @@ const XSVG = () => (
   </svg>
 )
 
-export default function CardHero() {
-  const { firstName, lastName, scriptAccent, title, linkedIn, github, website, twitter } = CARD_CONFIG
+interface CardHeroProps {
+  profile?: Profile | null
+}
+
+export default function CardHero({ profile }: CardHeroProps) {
+  const firstName = profile?.first_name || CARD_CONFIG.firstName
+  const lastName = profile?.last_name || CARD_CONFIG.lastName
+  const title = profile?.job_title || profile?.headline || CARD_CONFIG.title
+  const linkedIn = profile?.social_links?.linkedin || CARD_CONFIG.linkedIn
+  const github = profile?.social_links?.github || CARD_CONFIG.github
+  const website = profile?.website_url || CARD_CONFIG.website
+  const twitter = profile?.social_links?.twitter || CARD_CONFIG.twitter
+  const avatarUrl = profile?.avatar_url
 
   return (
     <header className="hero" role="banner">
-      {/* Spinning gold avatar ring */}
+      {/* Theme toggle */}
+      <ThemeToggle floating />
+
+      {/* Modern pastel avatar ring */}
       <div className="avatar-wrap" aria-hidden="true">
         <div className="avatar-ring" />
         <div className="avatar-ring-mask" />
-        <div className="avatar-inner">
-          {firstName[0]}{lastName[0]}
+        <div className="avatar-inner" style={{ overflow: 'hidden' }}>
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl}
+              alt={`${firstName} ${lastName}`}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            `${firstName[0] || 'D'}${lastName[0] || 'K'}`
+          )}
         </div>
       </div>
 
-      {/* Script accent */}
-      <p className="script-accent" aria-hidden="true">{scriptAccent}</p>
+      {/* Category badge */}
+      <span className="script-accent" aria-hidden="true">Digital Business Card</span>
 
       {/* Name */}
       <h1 className="hero-name" id="card-name">{firstName} {lastName}</h1>
@@ -57,22 +82,30 @@ export default function CardHero() {
 
       {/* Social strip */}
       <nav className="social-strip" aria-label="Social profiles">
-        <a href={linkedIn} target="_blank" rel="noopener noreferrer"
-           className="social-btn" aria-label="LinkedIn profile" id="hero-linkedin">
-          <LinkedInSVG />
-        </a>
-        <a href={github} target="_blank" rel="noopener noreferrer"
-           className="social-btn" aria-label="GitHub profile" id="hero-github">
-          <GithubSVG />
-        </a>
-        <a href={website} target="_blank" rel="noopener noreferrer"
-           className="social-btn" aria-label="Portfolio website" id="hero-portfolio">
-          <GlobeSVG />
-        </a>
-        <a href={twitter} target="_blank" rel="noopener noreferrer"
-           className="social-btn" aria-label="X / Twitter profile" id="hero-twitter">
-          <XSVG />
-        </a>
+        {linkedIn && (
+          <a href={linkedIn} target="_blank" rel="noopener noreferrer"
+             className="social-btn" aria-label="LinkedIn profile" id="hero-linkedin">
+            <LinkedInSVG />
+          </a>
+        )}
+        {github && (
+          <a href={github} target="_blank" rel="noopener noreferrer"
+             className="social-btn" aria-label="GitHub profile" id="hero-github">
+            <GithubSVG />
+          </a>
+        )}
+        {website && (
+          <a href={website} target="_blank" rel="noopener noreferrer"
+             className="social-btn" aria-label="Portfolio website" id="hero-portfolio">
+            <GlobeSVG />
+          </a>
+        )}
+        {twitter && (
+          <a href={twitter} target="_blank" rel="noopener noreferrer"
+             className="social-btn" aria-label="X / Twitter profile" id="hero-twitter">
+            <XSVG />
+          </a>
+        )}
       </nav>
     </header>
   )

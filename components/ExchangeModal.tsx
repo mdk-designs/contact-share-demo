@@ -1,15 +1,20 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { X, ArrowRight, UserPlus } from 'lucide-react'
-import { insertLead } from '@/lib/supabase'
+import { X, ArrowRight, UserPlus, Loader2 } from 'lucide-react'
+import { insertLead, type Profile } from '@/lib/supabase'
 import { CARD_CONFIG } from '@/lib/config'
 import SuccessScreen from './SuccessScreen'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 
 interface ExchangeModalProps {
   open: boolean
   onClose: () => void
   onToast: (type: 'success' | 'error', msg: string) => void
+  profile?: Profile | null
+  vcfUrl?: string
 }
 
 interface FormData {
@@ -27,23 +32,7 @@ interface FormErrors {
 
 const EMPTY: FormData = { name: '', phone: '', email: '', organization: '' }
 
-/**
- * Triggers native OS contact import by loading /api/contact.vcf
- * inside a hidden <iframe>.
- *
- * ┌─────────────────────────────────────────────────────────────────┐
- * │  HOW IT WORKS                                                   │
- * │                                                                 │
- * │  /api/contact.vcf responds with:                               │
- * │    Content-Type: text/vcard; charset=utf-8                     │
- * │    Content-Disposition: inline; filename="Deepak_Kumar.vcf"    │
- * │                                                                 │
- * │  iOS Safari intercepts the text/vcard MIME type and shows the  │
- * │  native "Create New Contact" overlay — the page stays alive.   │
- * │  Android Chrome launches the system Contacts save intent.      │
- * └─────────────────────────────────────────────────────────────────┘
- */
-function triggerNativeContactImport() {
+function triggerNativeContactImport(targetVcfUrl: string) {
   // Remove any stale iframe first
   const existing = document.getElementById('vcf-loader')
   if (existing) existing.remove()
@@ -53,14 +42,17 @@ function triggerNativeContactImport() {
   iframe.style.cssText =
     'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;opacity:0;pointer-events:none;'
   // Bust cache with timestamp so the correct vcf is always fetched
-  iframe.src = `/api/contact.vcf?t=${Date.now()}`
+  const separator = targetVcfUrl.includes('?') ? '&' : '?'
+  iframe.src = `${targetVcfUrl}${separator}t=${Date.now()}`
   document.body.appendChild(iframe)
 
   // Clean up after iOS has had time to intercept
   setTimeout(() => iframe.remove(), 8000)
 }
 
-export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalProps) {
+export default function ExchangeModal({ open, onClose, onToast, profile, vcfUrl }: ExchangeModalProps) {
+  const firstName = profile?.first_name || CARD_CONFIG.firstName
+  const activeVcfUrl = vcfUrl || (profile?.slug ? `/api/vcard/${profile.slug}` : '/api/contact.vcf')
   const [form, setForm] = useState<FormData>(EMPTY)
   const [errors, setErrors] = useState<FormErrors>({})
   const [loading, setLoading] = useState(false)
@@ -120,28 +112,47 @@ export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalP
 
     setLoading(true)
     try {
-      // 1. Save visitor's contact to Supabase
-      const { error } = await insertLead({
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        email: form.email.trim() || undefined,
-        organization: form.organization.trim() || undefined,
+      // 1. Dispatch visitor contact to API (handles Supabase DB & Edge Function email dispatch)
+      const res = await fetch('/api/lead/exchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile_id: profile?.id,
+          slug: profile?.slug,
+          visitor_name: form.name.trim(),
+          visitor_phone: form.phone.trim(),
+          visitor_email: form.email.trim() || undefined,
+          visitor_company: form.organization.trim() || undefined,
+        }),
       })
 
-      if (error) {
-        // Log but don't block — vCard still fires
-        console.error('[Supabase] Insert error:', error)
+      if (!res.ok) {
+        // Fallback directly to client-side insertLead
+        await insertLead({
+          profile_id: profile?.id,
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim() || undefined,
+          organization: form.organization.trim() || undefined,
+          visitor_name: form.name.trim(),
+          visitor_phone: form.phone.trim(),
+          visitor_email: form.email.trim() || undefined,
+          visitor_company: form.organization.trim() || undefined,
+        })
       }
 
       // 2. Trigger native OS contact import via hidden iframe
-      triggerNativeContactImport()
+      triggerNativeContactImport(activeVcfUrl)
 
       // 3. Transition to success screen
       setSubmitted(true)
       onToast('success', '🎉 Contact exchanged successfully!')
     } catch (err) {
       console.error('[ExchangeModal]', err)
-      onToast('error', 'Something went wrong — please try again.')
+      // Still trigger vCard import even if network failed
+      triggerNativeContactImport(activeVcfUrl)
+      setSubmitted(true)
+      onToast('success', '🎉 Contact downloaded to your phone!')
     } finally {
       setLoading(false)
     }
@@ -178,7 +189,7 @@ export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalP
 
         {/* ─── SUCCESS SCREEN ─── */}
         {submitted ? (
-          <SuccessScreen visitorName={form.name} />
+          <SuccessScreen visitorName={form.name} profile={profile} />
         ) : (
           <>
             {/* ─── HEADER ─── */}
@@ -188,18 +199,18 @@ export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalP
               </div>
               <h2 className="modal-title" id="modal-heading">Exchange Contact</h2>
               <p className="modal-sub" id="modal-desc">
-                Share your details to receive {CARD_CONFIG.firstName}'s contact directly on your phone.
+                Share your details to receive {firstName}&apos;s contact directly on your phone.
               </p>
             </div>
 
             {/* ─── FORM ─── */}
-            <form onSubmit={handleSubmit} noValidate aria-label="Contact exchange form" id="exchange-form">
+            <form onSubmit={handleSubmit} noValidate aria-label="Contact exchange form" id="exchange-form" className="space-y-4">
               {/* Full Name */}
-              <div className="field-group">
-                <label htmlFor="field-name" className="field-label">
-                  Full Name <span className="req" aria-hidden="true">*</span>
-                </label>
-                <input
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="field-name" className="text-xs font-semibold text-[var(--text-secondary)]">
+                  Full Name <span className="text-rose-500" aria-hidden="true">*</span>
+                </Label>
+                <Input
                   ref={firstInputRef}
                   id="field-name"
                   name="name"
@@ -207,7 +218,7 @@ export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalP
                   inputMode="text"
                   autoComplete="name"
                   placeholder="e.g. Priya Sharma"
-                  className={`field-input ${errors.name ? 'has-error' : ''}`}
+                  className={`h-11 rounded-xl bg-[var(--bg-input)] border-[var(--border-card)] text-sm shadow-xs ${errors.name ? 'border-rose-500 focus-visible:ring-rose-500/20' : ''}`}
                   value={form.name}
                   onChange={handleChange}
                   aria-required="true"
@@ -215,22 +226,22 @@ export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalP
                   aria-describedby={errors.name ? 'err-name' : undefined}
                   disabled={loading}
                 />
-                {errors.name && <p id="err-name" className="field-error" role="alert">{errors.name}</p>}
+                {errors.name && <p id="err-name" className="text-[11px] font-medium text-rose-500" role="alert">{errors.name}</p>}
               </div>
 
               {/* Phone */}
-              <div className="field-group">
-                <label htmlFor="field-phone" className="field-label">
-                  Phone Number <span className="req" aria-hidden="true">*</span>
-                </label>
-                <input
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="field-phone" className="text-xs font-semibold text-[var(--text-secondary)]">
+                  Phone Number <span className="text-rose-500" aria-hidden="true">*</span>
+                </Label>
+                <Input
                   id="field-phone"
                   name="phone"
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
                   placeholder="+91 98765 00000"
-                  className={`field-input ${errors.phone ? 'has-error' : ''}`}
+                  className={`h-11 rounded-xl bg-[var(--bg-input)] border-[var(--border-card)] text-sm shadow-xs ${errors.phone ? 'border-rose-500 focus-visible:ring-rose-500/20' : ''}`}
                   value={form.phone}
                   onChange={handleChange}
                   aria-required="true"
@@ -238,61 +249,63 @@ export default function ExchangeModal({ open, onClose, onToast }: ExchangeModalP
                   aria-describedby={errors.phone ? 'err-phone' : undefined}
                   disabled={loading}
                 />
-                {errors.phone && <p id="err-phone" className="field-error" role="alert">{errors.phone}</p>}
+                {errors.phone && <p id="err-phone" className="text-[11px] font-medium text-rose-500" role="alert">{errors.phone}</p>}
               </div>
 
               {/* Email */}
-              <div className="field-group">
-                <label htmlFor="field-email" className="field-label">Email Address</label>
-                <input
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="field-email" className="text-xs font-semibold text-[var(--text-secondary)]">Email Address</Label>
+                <Input
                   id="field-email"
                   name="email"
                   type="email"
                   inputMode="email"
                   autoComplete="email"
                   placeholder="you@company.com"
-                  className={`field-input ${errors.email ? 'has-error' : ''}`}
+                  className={`h-11 rounded-xl bg-[var(--bg-input)] border-[var(--border-card)] text-sm shadow-xs ${errors.email ? 'border-rose-500 focus-visible:ring-rose-500/20' : ''}`}
                   value={form.email}
                   onChange={handleChange}
                   aria-invalid={!!errors.email}
                   aria-describedby={errors.email ? 'err-email' : undefined}
                   disabled={loading}
                 />
-                {errors.email && <p id="err-email" className="field-error" role="alert">{errors.email}</p>}
+                {errors.email && <p id="err-email" className="text-[11px] font-medium text-rose-500" role="alert">{errors.email}</p>}
               </div>
 
               {/* Organization */}
-              <div className="field-group">
-                <label htmlFor="field-org" className="field-label">Organization</label>
-                <input
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="field-org" className="text-xs font-semibold text-[var(--text-secondary)]">Organization</Label>
+                <Input
                   id="field-org"
                   name="organization"
                   type="text"
                   autoComplete="organization"
                   placeholder="Your company or school"
-                  className="field-input"
+                  className="h-11 rounded-xl bg-[var(--bg-input)] border-[var(--border-card)] text-sm shadow-xs"
                   value={form.organization}
                   onChange={handleChange}
                   disabled={loading}
                 />
               </div>
 
-              {/* Submit */}
-              <button
+              {/* Submit Button */}
+              <Button
                 type="submit"
-                className="submit-btn"
+                variant="gradient"
+                size="lg"
                 disabled={loading}
                 id="submit-btn"
-                aria-label={loading ? 'Processing…' : `Get ${CARD_CONFIG.firstName}'s contact`}
+                className="w-full h-12 rounded-2xl text-sm font-semibold shadow-md mt-2"
+                aria-label={loading ? 'Processing…' : `Get ${firstName}'s contact`}
               >
                 {loading ? (
-                  <><span className="spinner" aria-hidden="true" /> Saving…</>
+                  <><Loader2 size={16} className="animate-spin mr-2" aria-hidden="true" /> Saving…</>
                 ) : (
-                  <>Get {CARD_CONFIG.firstName}'s Contact <ArrowRight size={15} aria-hidden="true" /></>
+                  <>Get {firstName}&apos;s Contact <ArrowRight size={15} className="ml-1.5" aria-hidden="true" /></>
                 )}
-              </button>
+              </Button>
 
-              <p style={{ textAlign: 'center', fontSize: 10.5, color: 'var(--text-muted)', marginTop: 10, opacity: 0.55 }}>
+              <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: 12 }}>
                 🔒 Your details are kept private and never sold.
               </p>
             </form>

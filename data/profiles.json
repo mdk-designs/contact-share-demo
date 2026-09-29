@@ -1,0 +1,30 @@
+[
+  {
+    "id": "demo-profile-deepak",
+    "slug": "deepak-kumar",
+    "role": "admin",
+    "first_name": "Deepak",
+    "last_name": "Kumar",
+    "job_title": "Lead Product Architect & UI Engineer",
+    "company_name": "DesignForge Studio",
+    "department": "Product & Design Systems",
+    "work_email": "deepak@designforge.studio",
+    "work_phone": "+919876543210",
+    "mobile_phone": "+919876543210",
+    "website_url": "https://deepak.design",
+    "address": "Bengaluru, India",
+    "bio": "UI/UX Engineer & Product Designer at DesignForge Studio. Crafting tactile digital products and design systems.",
+    "is_active": true,
+    "social_links": {
+      "linkedin": "https://linkedin.com/in/deepakkumar",
+      "github": "https://github.com/deepakkumar",
+      "twitter": "https://twitter.com/deepakkdesign"
+    },
+    "card_theme": {
+      "primaryColor": "#6366F1",
+      "accentColor": "#A855F7",
+      "template": "modern"
+    },
+    "updated_at": "2026-09-29T06:11:55.335Z"
+  }
+]

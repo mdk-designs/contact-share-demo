@@ -17,12 +17,19 @@ const LinkedInIcon = () => (
   </svg>
 )
 
+import type { Profile } from '@/lib/supabase'
+
 interface SuccessScreenProps {
   visitorName: string
+  profile?: Profile | null
 }
 
-export default function SuccessScreen({ visitorName }: SuccessScreenProps) {
-  const { phone, linkedIn, website, firstName, whatsappMessage } = CARD_CONFIG
+export default function SuccessScreen({ visitorName, profile }: SuccessScreenProps) {
+  const firstName = profile?.first_name || CARD_CONFIG.firstName
+  const phone = profile?.mobile_phone || profile?.work_phone || CARD_CONFIG.phone
+  const linkedIn = profile?.social_links?.linkedin || CARD_CONFIG.linkedIn
+  const website = profile?.website_url || CARD_CONFIG.website
+  const whatsappMessage = `Hi ${firstName}! I just saved your contact card and wanted to connect.`
 
   const waLink = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`
   const displayName = visitorName.split(' ')[0] || visitorName
