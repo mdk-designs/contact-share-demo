@@ -9,15 +9,17 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
 export default function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { user, role, isAdmin, isLoading, signOut } = useAuth()
+  const { user, isDemo, role, isAdmin, isLoading, signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
+  const isAuthenticated = Boolean(user && !isDemo)
+
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push(`/?redirect=${encodeURIComponent(pathname)}`)
+    if (!isLoading && !isAuthenticated) {
+      router.replace(`/?redirect=${encodeURIComponent(pathname)}`)
     }
-  }, [isLoading, user, pathname, router])
+  }, [isLoading, isAuthenticated, pathname, router])
 
   if (isLoading) {
     return (
@@ -35,7 +37,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
     )
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
         <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
@@ -77,7 +79,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
           </h2>
 
           <p className="mt-2 text-xs leading-relaxed text-[var(--text-secondary)]">
-            You are currently signed in as <span className="font-semibold text-[var(--text-primary)]">{user.email}</span> with the role <span className="font-semibold text-emerald-600 dark:text-emerald-400">Member</span>.
+            You are currently signed in as <span className="font-semibold text-[var(--text-primary)]">{user?.email || 'Team Member'}</span> with the role <span className="font-semibold text-emerald-600 dark:text-emerald-400">Member</span>.
           </p>
 
           <p className="mt-2 text-xs text-[var(--text-muted)]">

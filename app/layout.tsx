@@ -47,6 +47,11 @@ export default function RootLayout({
                 var pref = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                 var theme = saved || pref;
                 document.documentElement.setAttribute('data-theme', theme);
+                if (theme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
               } catch (e) {}
             `,
           }}

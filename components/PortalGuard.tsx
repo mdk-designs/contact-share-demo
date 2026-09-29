@@ -8,15 +8,18 @@ import { Lock, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function PortalGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth()
+  const { user, isDemo, isLoading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
+  // Real authenticated Supabase user required (no unauthenticated or demo bypass)
+  const isAuthenticated = Boolean(user && !isDemo)
+
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push(`/?redirect=${encodeURIComponent(pathname)}`)
+    if (!isLoading && !isAuthenticated) {
+      router.replace(`/?redirect=${encodeURIComponent(pathname)}`)
     }
-  }, [isLoading, user, pathname, router])
+  }, [isLoading, isAuthenticated, pathname, router])
 
   if (isLoading) {
     return (
@@ -25,7 +28,7 @@ export default function PortalGuard({ children }: { children: React.ReactNode })
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
         <h2 className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
-          Loading Member Portal…
+          Verifying Authentication…
         </h2>
         <p className="mt-1 text-xs text-[var(--text-muted)]">
           Connecting to your digital card profile and leads.
@@ -34,7 +37,7 @@ export default function PortalGuard({ children }: { children: React.ReactNode })
     )
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
         <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600">

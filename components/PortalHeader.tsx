@@ -128,7 +128,7 @@ export default function PortalHeader() {
             </Button>
 
             {/* User status & Sign Out */}
-            {user ? (
+            {user && !isDemo ? (
               <div className="flex items-center gap-2 pl-1 border-l border-[var(--border-subtle)]">
                 <div className="hidden md:flex flex-col items-end">
                   <span className="text-xs font-semibold text-[var(--text-primary)] leading-tight">

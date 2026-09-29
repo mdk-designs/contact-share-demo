@@ -18,6 +18,7 @@ export default function ThemeToggle({ floating = false, className = '' }: ThemeT
     const pref = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     const activeTheme = (saved as 'light' | 'dark') || pref
     document.documentElement.setAttribute('data-theme', activeTheme)
+    document.documentElement.classList.toggle('dark', activeTheme === 'dark')
     setTheme(activeTheme)
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -25,6 +26,7 @@ export default function ThemeToggle({ floating = false, className = '' }: ThemeT
       if (!localStorage.getItem('theme')) {
         const next = e.matches ? 'dark' : 'light'
         document.documentElement.setAttribute('data-theme', next)
+        document.documentElement.classList.toggle('dark', next === 'dark')
         setTheme(next)
       }
     }
@@ -36,6 +38,7 @@ export default function ThemeToggle({ floating = false, className = '' }: ThemeT
     const nextTheme = theme === 'dark' ? 'light' : 'dark'
     setTheme(nextTheme)
     document.documentElement.setAttribute('data-theme', nextTheme)
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark')
     try {
       localStorage.setItem('theme', nextTheme)
     } catch (e) {

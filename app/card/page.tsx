@@ -28,7 +28,8 @@ export default function CardPreviewPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [toast, setToast] = useState<ToastState>({ visible: false, type: 'success', message: '' })
 
-  const { user, profile, role, isAdmin, signOut } = useAuth()
+  const { user, profile, role, isAdmin, signOut, isDemo } = useAuth()
+  const isAuthenticated = Boolean(user && !isDemo)
 
   const showToast = useCallback((type: 'success' | 'error', msg: string) => {
     setToast({ visible: true, type, message: msg })
@@ -57,7 +58,7 @@ export default function CardPreviewPage() {
           </Link>
 
           <div className="flex items-center gap-2">
-            {user ? (
+            {isAuthenticated ? (
               <div className="flex items-center gap-2">
                 <span className="hidden md:inline text-xs text-[var(--text-secondary)]">
                   Signed in as <strong className="text-[var(--text-primary)]">{displayName}</strong>
@@ -121,7 +122,7 @@ export default function CardPreviewPage() {
           <CompanyBadge />
 
           <div className="pt-4 pb-2 text-center text-[11px] text-[var(--text-muted)] flex items-center justify-center gap-3 border-t border-[var(--border-subtle)]">
-            {user ? (
+            {isAuthenticated ? (
               <>
                 <Link href={isAdmin ? '/admin' : '/portal/profile'} className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
                   {isAdmin ? 'Admin Console' : 'Member Portal'}
@@ -132,15 +133,9 @@ export default function CardPreviewPage() {
                 </button>
               </>
             ) : (
-              <>
-                <Link href="/" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-                  Sign In / Register
-                </Link>
-                <span>&bull;</span>
-                <Link href="/portal/profile" className="hover:text-[var(--text-primary)] hover:underline">
-                  Member Portal
-                </Link>
-              </>
+              <Link href="/" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                Sign In to Member Portal &rarr;
+              </Link>
             )}
           </div>
         </main>

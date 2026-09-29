@@ -233,24 +233,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Check for stored Demo session
+        // Wipe any legacy demo session from localStorage so unauthenticated users cannot bypass login
         if (typeof window !== 'undefined') {
-          const savedDemo = localStorage.getItem(STORAGE_KEY)
-          if (savedDemo) {
-            const parsed = JSON.parse(savedDemo)
-            if (parsed.role === 'admin') {
-              setUser(DEMO_ADMIN_USER)
-              setProfile(DEMO_ADMIN_PROFILE)
-              setRole('admin')
-              setIsDemo(true)
-            } else {
-              setUser(DEMO_MEMBER_USER)
-              setProfile(DEMO_MEMBER_PROFILE)
-              setRole('member')
-              setIsDemo(true)
-            }
-          }
+          localStorage.removeItem(STORAGE_KEY)
         }
+        setUser(null)
+        setSession(null)
+        setProfile(null)
+        setRole(null)
+        setIsDemo(false)
       } catch (err) {
         console.warn('[AuthContext] Auth initialization notice:', err)
       } finally {
@@ -309,26 +300,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true)
       const cleanEmail = email.toLowerCase().trim()
 
-      // 1. Check for quick demo shortcuts if entered in credentials
-      if (cleanEmail === 'admin@contactforge.io' || (cleanEmail.includes('admin') && password === 'admin123')) {
-        await signInAsDemo('master_admin')
-        setIsLoading(false)
-        return { error: null, role: 'master_admin' }
-      }
-      if (cleanEmail === 'member@contactforge.io' || cleanEmail === 'sarah.jenkins@contactforge.io' || password === 'member123') {
-        await signInAsDemo('member')
-        setIsLoading(false)
-        return { error: null, role: 'member' }
-      }
-
-      // 2. Real Supabase Auth
+      // Real Supabase Auth
       const client = getSupabaseClient()
       if (!client) {
-        // Fallback demo authentication
-        const fallbackRole = cleanEmail.includes('admin') || cleanEmail.includes('deepak') ? 'master_admin' : 'member'
-        await signInAsDemo(fallbackRole)
         setIsLoading(false)
-        return { error: null, role: fallbackRole }
+        return { error: new Error('Supabase authentication is not configured.') }
       }
 
       try {
@@ -385,10 +361,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const client = getSupabaseClient()
 
       if (!client) {
-        // Emulate signup and sign in as demo
-        await signInAsDemo(metadata?.role || 'member')
         setIsLoading(false)
-        return { error: null }
+        return { error: new Error('Supabase authentication is not configured.') }
       }
 
       try {
