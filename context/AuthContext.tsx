@@ -8,26 +8,27 @@ export interface AuthContextType {
   user: User | null
   session: Session | null
   profile: Profile | null
-  role: 'admin' | 'member' | null
+  role: 'master_admin' | 'admin' | 'member' | null
   isAdmin: boolean
+  isMasterAdmin: boolean
   isLoading: boolean
   isDemo: boolean
-  signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null; role?: 'admin' | 'member' }>
+  signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null; role?: 'master_admin' | 'admin' | 'member' }>
   signUp: (
     email: string,
     password: string,
     metadata?: {
       firstName?: string
       lastName?: string
-      role?: 'admin' | 'member'
+      role?: 'master_admin' | 'admin' | 'member'
       companyName?: string
     }
   ) => Promise<{ error: Error | null }>
   signInWithOtp: (email: string) => Promise<{ error: Error | null }>
-  signInAsDemo: (demoRole: 'admin' | 'member') => Promise<void>
+  signInAsDemo: (demoRole: 'master_admin' | 'admin' | 'member') => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
-  elevateCurrentRole: (newRole: 'admin' | 'member') => void
+  elevateCurrentRole: (newRole: 'master_admin' | 'admin' | 'member') => void
 }
 
 const DEMO_ADMIN_USER = {
@@ -36,7 +37,7 @@ const DEMO_ADMIN_USER = {
   user_metadata: {
     first_name: 'Deepak',
     last_name: 'Kumar',
-    role: 'admin',
+    role: 'master_admin',
     company_name: 'ContactForge Enterprise',
   },
   app_metadata: {},
@@ -59,9 +60,9 @@ const DEMO_MEMBER_USER = {
 } as unknown as User
 
 const DEMO_ADMIN_PROFILE: Profile = {
-  id: 'demo-admin-id',
+  id: 'd0000000-0000-0000-0000-000000000001',
   slug: 'deepak-kumar',
-  role: 'admin',
+  role: 'master_admin',
   first_name: 'Deepak',
   last_name: 'Kumar',
   headline: 'UI/UX Engineer & Lead Architect',
@@ -73,7 +74,7 @@ const DEMO_ADMIN_PROFILE: Profile = {
   mobile_phone: '+1 (555) 234-5678',
   website_url: 'https://deepak.design',
   address: 'San Francisco, CA',
-  bio: 'Platform Administrator and Lead Product Engineer. Architecting dynamic business cards and contact exchange systems.',
+  bio: 'Master Administrator and Lead Product Engineer. Full authority over platform profiles, leads, and analytics.',
   is_active: true,
   social_links: {
     linkedin: 'https://linkedin.com/in/deepakkumar',
@@ -123,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [role, setRole] = useState<'admin' | 'member' | null>(null)
+  const [role, setRole] = useState<'master_admin' | 'admin' | 'member' | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isDemo, setIsDemo] = useState<boolean>(false)
 
@@ -131,11 +132,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfileForUser = useCallback(async (targetUser: User): Promise<Profile | null> => {
     const client = getSupabaseClient()
     const targetEmail = targetUser.email?.toLowerCase().trim()
-    const metaRole = (targetUser.user_metadata?.role as 'admin' | 'member') || 'member'
+    const metaRole = (targetUser.user_metadata?.role as 'master_admin' | 'admin' | 'member') || 'member'
 
     if (client) {
       try {
-        // 1. Try querying public.profiles by user ID
+        // 1. Try querying public.profiles by user_id (the auth foreign key)
+        const { data: byUserId, error: userErr } = await client
+          .from('profiles')
+          .select('*')
+          .eq('user_id', targetUser.id)
+          .maybeSingle()
+
+        if (!userErr && byUserId) {
+          return byUserId as Profile
+        }
+
+        // 2. Try querying public.profiles by primary key id
         const { data: byId, error: idErr } = await client
           .from('profiles')
           .select('*')
@@ -146,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return byId as Profile
         }
 
-        // 2. Try querying by work_email if ID didn't match
+        // 3. Try querying by work_email if ID didn't match
         if (targetEmail) {
           const { data: byEmail, error: emailErr } = await client
             .from('profiles')
@@ -155,6 +167,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .maybeSingle()
 
           if (!emailErr && byEmail) {
+            // Auto-link user_id if currently null
+            if (!byEmail.user_id) {
+              await client.from('profiles').update({ user_id: targetUser.id }).eq('id', byEmail.id)
+            }
             return byEmail as Profile
           }
         }
@@ -163,23 +179,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // 3. Fallback: synthesize profile from user metadata so authentication never breaks
+    // 4. Fallback: synthesize profile from user metadata
+    const isMasterEmail = targetEmail === 'kumardeepak181999@gmail.com' || targetEmail === 'admin@contactforge.io'
+    const finalRole: 'master_admin' | 'admin' | 'member' = isMasterEmail ? 'master_admin' : metaRole
+
     const firstName = targetUser.user_metadata?.first_name || targetUser.email?.split('@')[0] || 'User'
     const lastName = targetUser.user_metadata?.last_name || ''
     const rawSlug = `${firstName}-${lastName}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'card-owner'
 
     const synthesized: Profile = {
       id: targetUser.id,
+      user_id: targetUser.id,
       slug: rawSlug,
-      role: metaRole,
+      role: finalRole,
       first_name: firstName,
       last_name: lastName,
       work_email: targetUser.email || '',
       company_name: targetUser.user_metadata?.company_name || 'ContactForge',
       is_active: true,
       card_theme: {
-        primaryColor: metaRole === 'admin' ? '#6366F1' : '#10B981',
-        accentColor: metaRole === 'admin' ? '#A855F7' : '#14B8A6',
+        primaryColor: finalRole === 'master_admin' || finalRole === 'admin' ? '#6366F1' : '#10B981',
+        accentColor: finalRole === 'master_admin' || finalRole === 'admin' ? '#A855F7' : '#14B8A6',
         template: 'modern',
       },
     }
@@ -285,15 +305,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Sign In with Email & Password
   const signInWithPassword = useCallback(
-    async (email: string, password: string): Promise<{ error: Error | null; role?: 'admin' | 'member' }> => {
+    async (email: string, password: string): Promise<{ error: Error | null; role?: 'master_admin' | 'admin' | 'member' }> => {
       setIsLoading(true)
       const cleanEmail = email.toLowerCase().trim()
 
       // 1. Check for quick demo shortcuts if entered in credentials
       if (cleanEmail === 'admin@contactforge.io' || (cleanEmail.includes('admin') && password === 'admin123')) {
-        await signInAsDemo('admin')
+        await signInAsDemo('master_admin')
         setIsLoading(false)
-        return { error: null, role: 'admin' }
+        return { error: null, role: 'master_admin' }
       }
       if (cleanEmail === 'member@contactforge.io' || cleanEmail === 'sarah.jenkins@contactforge.io' || password === 'member123') {
         await signInAsDemo('member')
@@ -305,9 +325,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const client = getSupabaseClient()
       if (!client) {
         // Fallback demo authentication
-        await signInAsDemo('admin')
+        const fallbackRole = cleanEmail.includes('admin') || cleanEmail.includes('deepak') ? 'master_admin' : 'member'
+        await signInAsDemo(fallbackRole)
         setIsLoading(false)
-        return { error: null, role: 'admin' }
+        return { error: null, role: fallbackRole }
       }
 
       try {
@@ -330,7 +351,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           const prof = await fetchProfileForUser(data.user)
-          const resolvedRole = prof?.role || (data.user.user_metadata?.role as 'admin' | 'member') || 'member'
+          const resolvedRole = prof?.role || (data.user.user_metadata?.role as 'master_admin' | 'admin' | 'member') || 'member'
           setProfile(prof)
           setRole(resolvedRole)
           setIsLoading(false)
@@ -355,7 +376,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       metadata?: {
         firstName?: string
         lastName?: string
-        role?: 'admin' | 'member'
+        role?: 'master_admin' | 'admin' | 'member'
         companyName?: string
       }
     ): Promise<{ error: Error | null }> => {
@@ -436,10 +457,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // 1-Click Demo Login
-  const signInAsDemo = useCallback(async (demoRole: 'admin' | 'member'): Promise<void> => {
+  const signInAsDemo = useCallback(async (demoRole: 'master_admin' | 'admin' | 'member'): Promise<void> => {
     setIsLoading(true)
-    const chosenUser = demoRole === 'admin' ? DEMO_ADMIN_USER : DEMO_MEMBER_USER
-    const chosenProfile = demoRole === 'admin' ? DEMO_ADMIN_PROFILE : DEMO_MEMBER_PROFILE
+    const chosenUser = demoRole === 'master_admin' || demoRole === 'admin' ? DEMO_ADMIN_USER : DEMO_MEMBER_USER
+    const chosenProfile = demoRole === 'master_admin' || demoRole === 'admin' ? DEMO_ADMIN_PROFILE : DEMO_MEMBER_PROFILE
 
     setUser(chosenUser)
     setSession(null)
@@ -490,7 +511,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, fetchProfileForUser])
 
   // Instant elevate role (useful for testing admin portal)
-  const elevateCurrentRole = useCallback((newRole: 'admin' | 'member') => {
+  const elevateCurrentRole = useCallback((newRole: 'master_admin' | 'admin' | 'member') => {
     setRole(newRole)
     if (profile) {
       setProfile({ ...profile, role: newRole })
@@ -500,7 +521,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [profile, isDemo])
 
-  const isAdmin = useMemo(() => role === 'admin', [role])
+  const isMasterAdmin = useMemo(() => role === 'master_admin', [role])
+  const isAdmin = useMemo(() => role === 'master_admin' || role === 'admin', [role])
 
   const contextValue = useMemo<AuthContextType>(
     () => ({
@@ -509,6 +531,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       role,
       isAdmin,
+      isMasterAdmin,
       isLoading,
       isDemo,
       signInWithPassword,
@@ -525,6 +548,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       role,
       isAdmin,
+      isMasterAdmin,
       isLoading,
       isDemo,
       signInWithPassword,

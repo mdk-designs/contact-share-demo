@@ -292,11 +292,12 @@ export default function NewUserPage() {
                   </Label>
                   <select
                     value={form.role}
-                    onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value as 'admin' | 'member' }))}
+                    onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value as any }))}
                     className="w-full rounded-xl border border-[var(--border-card)] bg-[var(--bg-sheet)] h-10 px-3 text-xs text-[var(--text-primary)] outline-none focus:border-indigo-500 shadow-xs"
                   >
                     <option value="member">Member (Personal Card Only)</option>
-                    <option value="admin">Admin (Full Management)</option>
+                    <option value="admin">Admin (Team Management)</option>
+                    <option value="master_admin">Master Admin (Complete System Access)</option>
                   </select>
                 </div>
               </div>

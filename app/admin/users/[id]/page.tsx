@@ -79,7 +79,7 @@ export default function AdminUserDetailPage({
     websiteUrl: '',
     address: '',
     bio: '',
-    role: 'member' as 'admin' | 'member',
+    role: 'member' as 'master_admin' | 'admin' | 'member',
     isActive: true,
     linkedin: '',
     github: '',
@@ -354,6 +354,7 @@ export default function AdminUserDetailPage({
                     >
                       <option value="member">Member</option>
                       <option value="admin">Administrator</option>
+                      <option value="master_admin">Master Administrator</option>
                     </select>
                   </div>
 

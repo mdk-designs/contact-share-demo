@@ -22,10 +22,12 @@ export function getSupabaseClient(): SupabaseClient | null {
 
 export interface Profile {
   id: string
+  user_id?: string
   slug: string
-  role: 'admin' | 'member'
+  role: 'master_admin' | 'admin' | 'member'
   first_name: string
   last_name: string
+  telegram_chat_id?: string
   headline?: string
   job_title?: string
   company_name?: string

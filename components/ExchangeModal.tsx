@@ -101,6 +101,7 @@ export default function ExchangeModal({ open, onClose, onToast, profile, vcfUrl 
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [fallbackDownload, setFallbackDownload] = useState(false)
+  const [telegramDeepLink, setTelegramDeepLink] = useState<string | null>(null)
 
   const firstInputRef = useRef<HTMLInputElement>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
@@ -130,7 +131,7 @@ export default function ExchangeModal({ open, onClose, onToast, profile, vcfUrl 
   const handleClose = useCallback(() => {
     onClose()
     // Reset after the slide-down animation completes
-    setTimeout(() => { setForm(EMPTY); setErrors({}); setSubmitted(false); setFallbackDownload(false) }, 450)
+    setTimeout(() => { setForm(EMPTY); setErrors({}); setSubmitted(false); setFallbackDownload(false); setTelegramDeepLink(null) }, 450)
   }, [onClose])
 
 
@@ -157,7 +158,7 @@ export default function ExchangeModal({ open, onClose, onToast, profile, vcfUrl 
 
     setLoading(true)
     try {
-      // 1. Dispatch visitor contact to API (handles Supabase DB & Edge Function email dispatch)
+      // 1. Dispatch visitor contact to API (handles Supabase DB, email, & Telegram provision)
       const res = await fetch('/api/lead/exchange', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,7 +172,12 @@ export default function ExchangeModal({ open, onClose, onToast, profile, vcfUrl 
         }),
       })
 
-      if (!res.ok) {
+      if (res.ok) {
+        const data = await res.json()
+        if (data.telegram_deep_link) {
+          setTelegramDeepLink(data.telegram_deep_link)
+        }
+      } else {
         // Fallback directly to client-side insertLead
         await insertLead({
           profile_id: profile?.id,
@@ -234,7 +240,13 @@ export default function ExchangeModal({ open, onClose, onToast, profile, vcfUrl 
 
         {/* ─── SUCCESS SCREEN ─── */}
         {submitted ? (
-          <SuccessScreen visitorName={form.name} profile={profile} />
+          <SuccessScreen
+            visitorName={form.name}
+            profile={profile}
+            fallbackDownload={fallbackDownload}
+            vcfUrl={activeVcfUrl}
+            telegramDeepLink={telegramDeepLink}
+          />
         ) : (
           <>
             {/* ─── HEADER ─── */}

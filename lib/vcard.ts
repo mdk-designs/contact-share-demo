@@ -44,3 +44,32 @@ export function generateVCardString(data: VCardData): string {
 
   return lines.filter(Boolean).join('\r\n')
 }
+
+export function generateVisitorVCardString(lead: {
+  name: string
+  phone?: string
+  email?: string
+  organization?: string
+  jobTitle?: string
+  notes?: string
+}): string {
+  const parts = lead.name.trim().split(/\s+/)
+  const firstName = parts[0] || 'Contact'
+  const lastName = parts.slice(1).join(' ') || ''
+
+  const lines = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    `N:${lastName};${firstName};;;`,
+    `FN:${lead.name.trim()}`,
+    lead.organization ? `ORG:${lead.organization.trim()}` : '',
+    lead.jobTitle ? `TITLE:${lead.jobTitle.trim()}` : '',
+    lead.email ? `EMAIL;TYPE=INTERNET,WORK:${lead.email.trim()}` : '',
+    lead.phone ? `TEL;TYPE=CELL,VOICE:${lead.phone.trim()}` : '',
+    lead.notes ? `NOTE:${lead.notes.replace(/\r?\n/g, '\\n').trim()}` : '',
+    `REV:${new Date().toISOString()}`,
+    'END:VCARD',
+  ]
+
+  return lines.filter(Boolean).join('\r\n')
+}

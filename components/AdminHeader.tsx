@@ -54,7 +54,7 @@ export default function AdminHeader() {
   const handleSignOut = async () => {
     await signOut()
     toast.success('Signed out successfully')
-    router.push('/login')
+    router.push('/')
   }
 
   const displayName = profile
@@ -143,7 +143,7 @@ export default function AdminHeader() {
               </div>
             ) : (
               <Button size="sm" asChild variant="gradient" className="rounded-xl text-xs h-8">
-                <Link href="/login">
+                <Link href="/">
                   <LogIn size={13} className="mr-1.5" />
                   <span>Sign In</span>
                 </Link>

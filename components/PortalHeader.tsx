@@ -11,6 +11,8 @@ import {
   CreditCard,
   LogOut,
   LogIn,
+  QrCode,
+  Send,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -30,17 +32,29 @@ export default function PortalHeader() {
       active: pathname === '/portal/profile',
     },
     {
+      label: 'My QR Code',
+      href: '/portal/qr',
+      icon: QrCode,
+      active: pathname === '/portal/qr',
+    },
+    {
       label: 'My Leads',
       href: '/portal/leads',
       icon: Mail,
       active: pathname === '/portal/leads',
+    },
+    {
+      label: 'Telegram & Settings',
+      href: '/portal/settings',
+      icon: Send,
+      active: pathname === '/portal/settings',
     },
   ]
 
   const handleSignOut = async () => {
     await signOut()
     toast.success('Signed out successfully')
-    router.push('/login')
+    router.push('/')
   }
 
   const displayName = profile
@@ -141,7 +155,7 @@ export default function PortalHeader() {
               </div>
             ) : (
               <Button size="sm" asChild variant="gradient" className="rounded-xl text-xs h-8">
-                <Link href="/login">
+                <Link href="/">
                   <LogIn size={13} className="mr-1.5" />
                   <span>Sign In</span>
                 </Link>

@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react'
 import { Mail, Search, Download, RefreshCw } from 'lucide-react'
 import { getLeads, type Lead } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
 
 export default function MemberLeadsPage() {
+  const { profile } = useAuth()
   const [leads, setLeads] = useState<Lead[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -12,7 +14,7 @@ export default function MemberLeadsPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const data = await getLeads()
+      const data = await getLeads(profile?.id)
       setLeads(data)
     } catch (e) {
       console.warn('Failed loading member leads:', e)
@@ -23,7 +25,7 @@ export default function MemberLeadsPage() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [profile?.id])
 
   const filtered = leads.filter((l) => {
     const term = search.toLowerCase()

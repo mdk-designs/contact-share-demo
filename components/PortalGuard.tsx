@@ -14,7 +14,7 @@ export default function PortalGuard({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
+      router.push(`/?redirect=${encodeURIComponent(pathname)}`)
     }
   }, [isLoading, user, pathname, router])
 
@@ -48,7 +48,7 @@ export default function PortalGuard({ children }: { children: React.ReactNode })
         </p>
         <div className="mt-5">
           <Button asChild variant="gradient" className="rounded-xl">
-            <Link href={`/login?redirect=${encodeURIComponent(pathname)}`}>
+            <Link href={`/?redirect=${encodeURIComponent(pathname)}`}>
               <span>Sign In to Member Portal</span>
               <ArrowRight size={14} className="ml-1.5" />
             </Link>

@@ -117,7 +117,11 @@ export default function AdminUsersPage() {
 
   // Toggle user role between Admin and Member
   const handleToggleRole = async (profile: Profile) => {
-    const nextRole = profile.role === 'admin' ? 'member' : 'admin'
+    if (profile.role === 'master_admin') {
+      toast.info('Master Admin role is protected and cannot be toggled directly.')
+      return
+    }
+    const nextRole: 'admin' | 'member' = profile.role === 'admin' ? 'member' : 'admin'
     setProfiles((prev) =>
       prev.map((p) => (p.id === profile.id ? { ...p, role: nextRole } : p))
     )
@@ -303,15 +307,21 @@ export default function AdminUsersPage() {
                         title={`Click to switch role to ${profile.role === 'admin' ? 'Member' : 'Admin'}`}
                       >
                         <Badge
-                          variant={profile.role === 'admin' ? 'lavender' : 'outline'}
-                          className="gap-1 font-semibold uppercase tracking-wider text-[10px] hover:ring-1 hover:ring-indigo-400"
+                          variant={profile.role === 'master_admin' ? 'default' : profile.role === 'admin' ? 'lavender' : 'outline'}
+                          className={`gap-1 font-semibold uppercase tracking-wider text-[10px] ${
+                            profile.role === 'master_admin'
+                              ? 'bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 text-white border-none shadow-xs'
+                              : 'hover:ring-1 hover:ring-indigo-400'
+                          }`}
                         >
-                          {profile.role === 'admin' ? (
+                          {profile.role === 'master_admin' ? (
+                            <Sparkles size={11} className="text-amber-200" />
+                          ) : profile.role === 'admin' ? (
                             <Shield size={11} className="text-indigo-500" />
                           ) : (
                             <UserCheck size={11} />
                           )}
-                          {profile.role}
+                          {profile.role.replace('_', ' ')}
                         </Badge>
                       </button>
                     </TableCell>

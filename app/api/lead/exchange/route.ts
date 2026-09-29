@@ -93,14 +93,49 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 3. Telegram Bot Delivery Provision
+    let telegramDeepLink: string | null = null
+    let cardholderTelegramNotified = false
+
+    try {
+      const { isTelegramConfigured, getTelegramDeepLink, sendTelegramVCardDocument } = await import('@/lib/telegram')
+      const { generateVisitorVCardString } = await import('@/lib/vcard')
+
+      if (isTelegramConfigured()) {
+        telegramDeepLink = getTelegramDeepLink(`lead_${leadId}`)
+
+        // If cardholder has linked their Telegram chat ID, send visitor's vCard to cardholder!
+        if (resolvedProfile?.telegram_chat_id) {
+          const visitorVCard = generateVisitorVCardString({
+            name: visitor_name.trim(),
+            phone: visitor_phone?.trim(),
+            email: visitor_email?.trim(),
+            organization: visitor_company?.trim(),
+            jobTitle: visitor_job_title?.trim(),
+            notes: notes?.trim(),
+          })
+
+          const tgRes = await sendTelegramVCardDocument({
+            chatId: resolvedProfile.telegram_chat_id,
+            vcardString: visitorVCard,
+            filename: `${visitor_name.trim().replace(/\s+/g, '_')}.vcf`,
+            caption: `🤝 <b>New Lead Exchanged!</b>\n<b>${visitor_name}</b> (${visitor_phone || visitor_email || 'No contact provided'}) just exchanged contact details on your card.\nTap attached file to save their contact!`,
+          })
+          cardholderTelegramNotified = tgRes.success
+        }
+      }
+    } catch (tgErr) {
+      console.warn('[API /api/lead/exchange] Telegram notification notice:', tgErr)
+    }
+
     return NextResponse.json(
       {
         success: true,
         lead_id: leadId,
         emailed,
-        message: emailed
-          ? 'Lead captured and vCard delivered to visitor email'
-          : 'Lead captured and vCard delivery queued successfully',
+        cardholder_telegram_notified: cardholderTelegramNotified,
+        telegram_deep_link: telegramDeepLink,
+        message: 'Lead captured and contact cards prepared successfully',
       },
       { status: 200 }
     )

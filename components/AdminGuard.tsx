@@ -4,18 +4,18 @@ import React, { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
-import { ShieldAlert, Shield, ArrowRight, LogOut, ExternalLink, Loader2, Sparkles } from 'lucide-react'
+import { ShieldAlert, ArrowRight, LogOut, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
 export default function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { user, role, isAdmin, isLoading, signOut, signInAsDemo } = useAuth()
+  const { user, role, isAdmin, isLoading, signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
+      router.push(`/?redirect=${encodeURIComponent(pathname)}`)
     }
   }, [isLoading, user, pathname, router])
 
@@ -29,7 +29,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
           Verifying Administrator Privileges…
         </h2>
         <p className="mt-1 text-xs text-[var(--text-muted)]">
-          Checking your Supabase Auth session and role permissions.
+          Checking your authentication session and role permissions.
         </p>
       </div>
     )
@@ -49,7 +49,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
         </p>
         <div className="mt-5">
           <Button asChild variant="gradient" className="rounded-xl">
-            <Link href={`/login?redirect=${encodeURIComponent(pathname)}`}>
+            <Link href={`/?redirect=${encodeURIComponent(pathname)}`}>
               <span>Go to Sign In</span>
               <ArrowRight size={14} className="ml-1.5" />
             </Link>
@@ -73,7 +73,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
           </Badge>
 
           <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl">
-            Admin Portal Separated
+            Admin Portal Restricted
           </h2>
 
           <p className="mt-2 text-xs leading-relaxed text-[var(--text-secondary)]">
@@ -93,21 +93,12 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
             </Button>
 
             <Button
-              variant="outline"
-              onClick={() => signInAsDemo('admin')}
-              className="rounded-xl border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100/50"
-            >
-              <Sparkles size={14} className="mr-1.5 text-indigo-500" />
-              <span>Switch to Demo Admin Account</span>
-            </Button>
-
-            <Button
               variant="ghost"
               onClick={() => signOut()}
               className="rounded-xl text-xs text-[var(--text-muted)] hover:text-rose-600"
             >
               <LogOut size={13} className="mr-1.5" />
-              <span>Sign Out &amp; Log In as Admin</span>
+              <span>Sign Out</span>
             </Button>
           </div>
         </div>

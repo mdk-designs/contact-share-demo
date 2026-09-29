@@ -32,7 +32,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 
+import { useAuth } from '@/context/AuthContext'
+
 export default function MemberProfileEditorPage() {
+  const { user, profile: authProfile, refreshProfile } = useAuth()
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [selectedSlug, setSelectedSlug] = useState('deepak-kumar')
   const [currentProfileId, setCurrentProfileId] = useState<string>('demo-deepak')
@@ -57,24 +60,28 @@ export default function MemberProfileEditorPage() {
     twitter: CARD_CONFIG.twitter,
   })
 
-  // Load profiles from Supabase
+  // Prioritize logged in user's profile
   useEffect(() => {
-    async function load() {
-      try {
-        const list = await getAllProfiles()
-        if (list && list.length > 0) {
-          setProfiles(list)
-          const first = list.find((p) => p.slug === 'deepak-kumar') || list[0]
-          if (first) {
-            applyProfile(first)
+    if (authProfile) {
+      applyProfile(authProfile)
+    } else {
+      async function load() {
+        try {
+          const list = await getAllProfiles()
+          if (list && list.length > 0) {
+            setProfiles(list)
+            const first = list.find((p) => p.slug === 'deepak-kumar') || list[0]
+            if (first) {
+              applyProfile(first)
+            }
           }
+        } catch (err) {
+          console.warn('Failed loading profiles in portal:', err)
         }
-      } catch (err) {
-        console.warn('Failed loading profiles in portal:', err)
       }
+      load()
     }
-    load()
-  }, [])
+  }, [authProfile])
 
   const applyProfile = (p: Profile) => {
     setSelectedSlug(p.slug)
@@ -157,6 +164,7 @@ export default function MemberProfileEditorPage() {
       }
 
       await updateProfile(currentProfileId, updates)
+      await refreshProfile()
       setSaved(true)
       toast.success('Your digital card changes are live!')
       setTimeout(() => setSaved(false), 3000)
