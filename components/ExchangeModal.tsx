@@ -32,7 +32,7 @@ interface FormErrors {
 
 const EMPTY: FormData = { name: '', phone: '', email: '', organization: '' }
 
-function triggerNativeContactImport(targetVcfUrl: string) {
+async function triggerNativeContactImport(targetVcfUrl: string) {
   // Remove any stale iframe first
   const existing = document.getElementById('vcf-loader')
   if (existing) existing.remove()
