@@ -13,7 +13,7 @@ import { ArrowRightLeft, Download, Share2, Check, ShieldCheck } from 'lucide-rea
 const ExchangeModal = dynamic(() => import('@/components/ExchangeModal'), {
   ssr: false,
 })
-import type { Profile } from '@/lib/supabase'
+import type { Profile, ExchangeSource } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast as sonnerToast } from 'sonner'
@@ -21,11 +21,12 @@ import { toast as sonnerToast } from 'sonner'
 interface ClientCardViewProps {
   initialProfile: Profile | null
   slug: string
+  initialSource?: ExchangeSource
 }
 
 type ToastState = { visible: boolean; type: 'success' | 'error'; message: string }
 
-export default function ClientCardView({ initialProfile, slug }: ClientCardViewProps) {
+export default function ClientCardView({ initialProfile, slug, initialSource = 'unknown' }: ClientCardViewProps) {
   const [profile] = useState<Profile | null>(initialProfile)
   const [modalOpen, setModalOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -56,7 +57,7 @@ export default function ClientCardView({ initialProfile, slug }: ClientCardViewP
     iframe.id = 'direct-vcf-loader'
     iframe.style.cssText =
       'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;opacity:0;pointer-events:none;'
-    iframe.src = `${vcfUrl}?t=${Date.now()}`
+    iframe.src = `${vcfUrl}?download=1&t=${Date.now()}`
     document.body.appendChild(iframe)
 
     showToast('success', '📥 Downloading contact card (.vcf)...')
@@ -81,18 +82,13 @@ export default function ClientCardView({ initialProfile, slug }: ClientCardViewP
       }
     }
 
-    if (navigator.clipboard) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
-      showToast('success', '🔗 Card link copied to clipboard!')
+      showToast('success', '📋 Card link copied to clipboard!')
       setTimeout(() => setCopied(false), 2500)
     }
   }
-
-  // Record scan event telemetry once mounted
-  useEffect(() => {
-    fetch(`/api/scan/${slug}`, { method: 'POST' }).catch(() => {})
-  }, [slug])
 
   return (
     <>
@@ -192,6 +188,7 @@ export default function ClientCardView({ initialProfile, slug }: ClientCardViewP
           onToast={showToast}
           profile={profile}
           vcfUrl={vcfUrl}
+          source={initialSource}
         />
       ) : null}
 

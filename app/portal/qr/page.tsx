@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react'
 import {
@@ -10,14 +10,13 @@ import {
   Check,
   ExternalLink,
   Share2,
-  Sparkles,
+  Nfc,
   BarChart2,
   Smartphone,
-  Eye,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { getSupabaseClient } from '@/lib/supabase'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -25,6 +24,7 @@ import { toast } from 'sonner'
 export default function MemberQRPage() {
   const { user, profile } = useAuth()
   const [copied, setCopied] = useState(false)
+  const [copiedNfc, setCopiedNfc] = useState(false)
   const [scansCount, setScansCount] = useState<number>(0)
   const [loadingScans, setLoadingScans] = useState<boolean>(true)
   const [fgColor, setFgColor] = useState<string>('#0F172A')
@@ -32,6 +32,8 @@ export default function MemberQRPage() {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://contactforge.io'
   const cardSlug = profile?.slug || 'my-card'
   const cardUrl = `${origin}/c/${cardSlug}`
+  const qrTargetUrl = `${cardUrl}?src=qr`
+  const nfcTargetUrl = `${cardUrl}?src=nfc`
 
   // Fetch scan analytics for this user's profile
   useEffect(() => {
@@ -66,6 +68,13 @@ export default function MemberQRPage() {
     setCopied(true)
     toast.success('Card link copied to clipboard!')
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleCopyNfcLink = () => {
+    navigator.clipboard.writeText(nfcTargetUrl)
+    setCopiedNfc(true)
+    toast.success('NFC Tag URL copied! Paste this into your NFC tag writer tool.')
+    setTimeout(() => setCopiedNfc(false), 2000)
   }
 
   const handleDownloadPNG = () => {
@@ -104,7 +113,7 @@ export default function MemberQRPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-              My Personal QR Code
+              My Personal QR &amp; NFC Code
             </h1>
             <Badge variant="mint" className="text-[10px] font-bold uppercase tracking-wider">
               Live &amp; Scannable
@@ -123,7 +132,7 @@ export default function MemberQRPage() {
             className="rounded-xl text-xs border-[var(--border-card)] shadow-xs"
           >
             {copied ? <Check size={14} className="text-emerald-500 mr-1.5" /> : <Copy size={14} className="mr-1.5" />}
-            <span>{copied ? 'Copied' : 'Copy Link'}</span>
+            <span>{copied ? 'Copied' : 'Copy Clean Link'}</span>
           </Button>
 
           <Button
@@ -148,7 +157,7 @@ export default function MemberQRPage() {
               {/* QR Container */}
               <div className="relative p-6 bg-white rounded-3xl shadow-xl ring-1 ring-slate-900/5 transition-transform hover:scale-[1.02] duration-300">
                 <QRCodeSVG
-                  value={cardUrl}
+                  value={qrTargetUrl}
                   size={240}
                   level="H"
                   fgColor={fgColor}
@@ -160,7 +169,7 @@ export default function MemberQRPage() {
                 <div className="hidden">
                   <QRCodeCanvas
                     id="personal-qr-canvas"
-                    value={cardUrl}
+                    value={qrTargetUrl}
                     size={1024}
                     level="H"
                     fgColor={fgColor}
@@ -180,120 +189,72 @@ export default function MemberQRPage() {
               </div>
             </div>
 
-            <CardContent className="p-6 space-y-4">
-              {/* Color Customization */}
-              <div className="flex items-center justify-center gap-3">
-                <span className="text-xs font-semibold text-[var(--text-secondary)]">Accent Color:</span>
-                <div className="flex items-center gap-2">
-                  {[
-                    { label: 'Slate', color: '#0F172A' },
-                    { label: 'Emerald', color: '#059669' },
-                    { label: 'Indigo', color: '#4F46E5' },
-                    { label: 'Purple', color: '#7C3AED' },
-                  ].map((c) => (
-                    <button
-                      key={c.color}
-                      onClick={() => setFgColor(c.color)}
-                      style={{ backgroundColor: c.color }}
-                      className={`h-6 w-6 rounded-full transition-transform ${
-                        fgColor === c.color ? 'ring-2 ring-offset-2 ring-emerald-500 scale-110' : 'hover:scale-105'
-                      }`}
-                      title={c.label}
-                      aria-label={c.label}
-                    />
-                  ))}
-                </div>
-              </div>
+            {/* Quick Actions */}
+            <div className="p-5 border-t border-[var(--border-subtle)] bg-[var(--bg-sheet)]/30 flex items-center justify-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPNG}
+                className="rounded-xl text-xs font-semibold border-[var(--border-card)] shadow-xs"
+              >
+                <Download size={14} className="mr-1.5 text-emerald-500" />
+                <span>Download PNG (1024px)</span>
+              </Button>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <Button
-                  onClick={handleDownloadPNG}
-                  className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold text-xs shadow-md hover:brightness-105"
-                >
-                  <Download size={14} className="mr-1.5" />
-                  <span>Download PNG</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={handleShare}
-                  className="rounded-xl border-[var(--border-card)] text-xs font-semibold shadow-xs"
-                >
-                  <Share2 size={14} className="mr-1.5" />
-                  <span>Share QR</span>
-                </Button>
-              </div>
-            </CardContent>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShare}
+                className="rounded-xl text-xs font-semibold border-[var(--border-card)] shadow-xs"
+              >
+                <Share2 size={14} className="mr-1.5 text-indigo-500" />
+                <span>Share Card</span>
+              </Button>
+            </div>
           </Card>
         </div>
 
-        {/* Right: Analytics & Usage Instructions */}
+        {/* Right: NFC Setup & Analytics */}
         <div className="md:col-span-5 space-y-4">
-          {/* Scan Stats */}
-          <Card className="rounded-3xl border-[var(--border-card)] bg-[var(--bg-card)] shadow-xs">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-[var(--text-primary)]">
-                  Live Scan Analytics
-                </CardTitle>
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
-                  <BarChart2 size={16} />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <span className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">
-                  {loadingScans ? '…' : scansCount}
-                </span>
-                <span className="text-xs text-[var(--text-muted)] ml-2">Total QR Scans</span>
-              </div>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                Every time an in-person client or colleague scans your badge or screen, a scan record is anonymously registered in your account analytics.
-              </p>
-            </CardContent>
+          {/* Analytics Stats */}
+          <Card className="rounded-2xl border-[var(--border-card)] bg-[var(--bg-card)] p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart2 size={16} className="text-emerald-500" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                QR Code Analytics
+              </h2>
+            </div>
+            <p className="text-3xl font-black text-[var(--text-primary)]">
+              {loadingScans ? '…' : scansCount}
+            </p>
+            <p className="text-[11px] text-[var(--text-muted)] mt-1">
+              Total lifetime card scans logged on ContactForge.
+            </p>
           </Card>
 
-          {/* Quick Tips */}
-          <Card className="rounded-3xl border-[var(--border-card)] bg-[var(--bg-card)] shadow-xs">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-[var(--text-primary)]">
-                  How to Use Your QR
-                </CardTitle>
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600">
-                  <Smartphone size={16} />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-xs text-[var(--text-secondary)]">
-              <div className="flex items-start gap-2.5">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 font-bold text-[10px]">
-                  1
-                </span>
-                <p>Add it to your lock screen wallpaper or digital wallet for immediate tap or scan.</p>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 font-bold text-[10px]">
-                  2
-                </span>
-                <p>Include the PNG image on your email signature and presentation slides.</p>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 font-bold text-[10px]">
-                  3
-                </span>
-                <p>
-                  Visitors can save your vCard with 1 tap, and you can receive their details via{' '}
-                  <Link href="/portal/settings" className="font-semibold text-emerald-600 dark:text-emerald-400 underline">
-                    Telegram integration
-                  </Link>.
-                </p>
-              </div>
-            </CardContent>
+          {/* NFC Tag Configuration */}
+          <Card className="rounded-2xl border-[var(--border-card)] bg-[var(--bg-card)] p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-2">
+              <Smartphone size={16} className="text-indigo-500" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                NFC Tag Writing
+              </h2>
+            </div>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Write this canonical URL into your physical NFC smart card, sticker, or phone badge using any NFC writing app (e.g. NFC Tools):
+            </p>
+            <div className="mt-3 p-2.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-subtle)] font-mono text-[11px] text-[var(--text-primary)] truncate">
+              {nfcTargetUrl}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyNfcLink}
+              className="mt-3 w-full rounded-xl text-xs font-semibold"
+            >
+              {copiedNfc ? <Check size={13} className="text-emerald-500 mr-1.5" /> : <Copy size={13} className="mr-1.5" />}
+              <span>{copiedNfc ? 'NFC Link Copied' : 'Copy NFC Target URL'}</span>
+            </Button>
           </Card>
         </div>
       </div>

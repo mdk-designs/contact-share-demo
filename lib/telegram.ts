@@ -30,7 +30,7 @@ export function getBotUsername(): string | null {
 
 /**
  * Generate a Telegram deep link with a start parameter.
- * e.g., https://t.me/ContactForgeBot?start=lead_12345
+ * e.g., https://t.me/ContactForgeBot?start=tok_12345
  */
 export function getTelegramDeepLink(startParam: string): string | null {
   const botUser = getBotUsername()
@@ -48,7 +48,6 @@ export async function sendTelegramMessage(
 ): Promise<TelegramSendResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) {
-    console.info(`[Telegram Provision] Token not set. Message to ${chatId} skipped: "${text.slice(0, 50)}..."`)
     return { success: false, notConfigured: true, error: 'TELEGRAM_BOT_TOKEN not configured' }
   }
 
@@ -92,7 +91,6 @@ export async function sendTelegramVCardDocument({
 }): Promise<TelegramSendResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) {
-    console.info(`[Telegram Provision] Token not set. Document ${filename} to ${chatId} skipped.`)
     return { success: false, notConfigured: true, error: 'TELEGRAM_BOT_TOKEN not configured' }
   }
 
@@ -100,9 +98,9 @@ export async function sendTelegramVCardDocument({
     const formData = new FormData()
     formData.append('chat_id', String(chatId))
 
-    // Create file blob from vCard string
+    const cleanFilename = filename.endsWith('.vcf') ? filename : `${filename}.vcf`
     const blob = new Blob([vcardString], { type: 'text/vcard;charset=utf-8' })
-    formData.append('document', blob, filename.endsWith('.vcf') ? filename : `${filename}.vcf`)
+    formData.append('document', blob, cleanFilename)
 
     if (caption) {
       formData.append('caption', caption)
@@ -125,4 +123,50 @@ export async function sendTelegramVCardDocument({
     console.error('[Telegram API] Network error during sendDocument:', err)
     return { success: false, error: err?.message || 'Network error' }
   }
+}
+
+/**
+ * Formats notification for cardholder when a visitor exchanges contacts.
+ */
+export function formatCardholderTelegramCaption(exchange: {
+  visitorName: string
+  visitorPhone?: string
+  visitorCompany?: string
+  visitorEmail?: string
+  date?: string
+}): string {
+  const dateStr = exchange.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  return [
+    '🔄 <b>New Contact Exchange</b>',
+    '',
+    `<b>Name:</b> ${exchange.visitorName}`,
+    `<b>Phone:</b> ${exchange.visitorPhone || '—'}`,
+    exchange.visitorCompany ? `<b>Organization:</b> ${exchange.visitorCompany}` : '',
+    exchange.visitorEmail ? `<b>Email:</b> ${exchange.visitorEmail}` : '',
+    `<b>Date:</b> ${dateStr}`,
+    '',
+    '<i>ContactForge Platform · Tap attached file to add to contacts</i>',
+  ].filter(Boolean).join('\n')
+}
+
+/**
+ * Formats notification for visitor receiving cardholder's contact.
+ */
+export function formatVisitorTelegramCaption(profile: {
+  firstName: string
+  lastName: string
+  companyName?: string
+  jobTitle?: string
+}): string {
+  const fullName = `${profile.firstName} ${profile.lastName}`.trim()
+  return [
+    '✅ <b>Contact Exchange Complete</b>',
+    '',
+    'You exchanged contacts with:',
+    `<b>${fullName}</b>`,
+    profile.companyName ? profile.companyName : '',
+    profile.jobTitle ? profile.jobTitle : '',
+    '',
+    'Here is their contact card. Tap below to save directly to your contacts.',
+  ].filter(Boolean).join('\n')
 }

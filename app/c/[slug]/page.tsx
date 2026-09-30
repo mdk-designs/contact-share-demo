@@ -2,7 +2,8 @@ import { cache } from 'react'
 import { Metadata } from 'next'
 import { headers } from 'next/headers'
 import Link from 'next/link'
-import { resolveProfileWithFallback, logQrScan } from '@/lib/supabase'
+import { resolveProfileWithFallback, logQrScan, type ExchangeSource } from '@/lib/supabase'
+import { toPublicProfileDTO } from '@/lib/dto'
 import ClientCardView from '@/components/ClientCardView'
 import { CreditCard, ArrowLeft } from 'lucide-react'
 
@@ -61,16 +62,25 @@ export async function generateMetadata({
 
 export default async function PublicCardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ src?: string }>
 }) {
   const { slug } = await params
+  const { src } = await searchParams
   const cleanSlug = decodeURIComponent(slug).toLowerCase()
 
   // 1. Fetch profile from Supabase (or demo fallback, deduplicated via React.cache)
   const profile = await getCachedProfile(cleanSlug)
 
-  // 2. Telemetry: log server-side scan event asynchronously
+  // 2. Identify source attribution (e.g. ?src=qr, ?src=nfc, or direct/unknown)
+  const validSources: ExchangeSource[] = ['qr', 'nfc', 'direct']
+  const detectedSource: ExchangeSource = src && validSources.includes(src as ExchangeSource)
+    ? (src as ExchangeSource)
+    : 'unknown'
+
+  // 3. Telemetry: log server-side scan event asynchronously without blocking page render
   if (profile?.id) {
     try {
       const headerList = await headers()
@@ -80,13 +90,13 @@ export default async function PublicCardPage({
         headerList.get('x-real-ip') ||
         undefined
 
-      logQrScan(profile.id, userAgent, ip).catch(() => {})
+      logQrScan(profile.id, userAgent, ip, detectedSource).catch(() => {})
     } catch {
       // Non-blocking telemetry
     }
   }
 
-  // 3. If profile does not exist or has been disabled
+  // 4. If profile does not exist or has been disabled
   if (!profile || !profile.is_active) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center p-6 text-center">
@@ -113,5 +123,8 @@ export default async function PublicCardPage({
     )
   }
 
-  return <ClientCardView initialProfile={profile} slug={cleanSlug} />
+  // 5. Sanitize profile to safe DTO (removes sensitive user_id, telegram_chat_id, internal role)
+  const safeProfile = toPublicProfileDTO(profile) as any
+
+  return <ClientCardView initialProfile={safeProfile} slug={cleanSlug} initialSource={detectedSource} />
 }

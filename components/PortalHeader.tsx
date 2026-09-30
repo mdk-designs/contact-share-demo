@@ -5,14 +5,13 @@ import { usePathname, useRouter } from 'next/navigation'
 import ThemeToggle from '@/components/ThemeToggle'
 import {
   User,
-  Mail,
+  ArrowRightLeft,
   ArrowUpRight,
   Shield,
   CreditCard,
   LogOut,
-  LogIn,
   QrCode,
-  Send,
+  Settings,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,31 +21,31 @@ import { toast } from 'sonner'
 export default function PortalHeader() {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, profile, role, isAdmin, signOut, isDemo } = useAuth()
+  const { user, profile, role, isAdmin, isMasterAdmin, signOut } = useAuth()
 
   const navItems = [
     {
-      label: 'My Card Editor',
+      label: 'My Card',
       href: '/portal/profile',
       icon: User,
       active: pathname === '/portal/profile',
     },
     {
-      label: 'My QR Code',
+      label: 'QR Code',
       href: '/portal/qr',
       icon: QrCode,
       active: pathname === '/portal/qr',
     },
     {
-      label: 'My Leads',
-      href: '/portal/leads',
-      icon: Mail,
-      active: pathname === '/portal/leads',
+      label: 'Contact Exchanges',
+      href: '/portal/exchanges',
+      icon: ArrowRightLeft,
+      active: pathname.startsWith('/portal/exchanges') || pathname.startsWith('/portal/leads'),
     },
     {
-      label: 'Telegram & Settings',
+      label: 'Settings',
       href: '/portal/settings',
-      icon: Send,
+      icon: Settings,
       active: pathname === '/portal/settings',
     },
   ]
@@ -60,6 +59,8 @@ export default function PortalHeader() {
   const displayName = profile
     ? `${profile.first_name} ${profile.last_name}`.trim()
     : user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'Team Member'
+
+  const roleLabel = isMasterAdmin ? 'Super Admin' : isAdmin ? 'Admin' : 'Member'
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border-card)] bg-[var(--bg-card)]/90 backdrop-blur-md transition-colors duration-200">
@@ -78,7 +79,7 @@ export default function PortalHeader() {
                     Member Portal
                   </Badge>
                 </div>
-                <span className="text-[11px] text-[var(--text-muted)] hidden sm:inline">Personal Digital Card &amp; Leads</span>
+                <span className="text-[11px] text-[var(--text-muted)] hidden sm:inline">Digital Business Card &amp; Exchanges</span>
               </div>
             </Link>
 
@@ -104,111 +105,75 @@ export default function PortalHeader() {
             </nav>
           </div>
 
-          {/* Right Action Bar */}
+          {/* User Profile & Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Show Admin Console switch if admin */}
+            {/* Direct Link to Live Public Card */}
+            {profile?.slug && (
+              <Button asChild variant="outline" size="sm" className="hidden md:inline-flex h-9 rounded-xl border-[var(--border-card)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] gap-1.5 shadow-xs">
+                <Link href={`/c/${profile.slug}`} target="_blank" rel="noopener noreferrer">
+                  <span>View My Card</span>
+                  <ArrowUpRight size={13} className="text-[var(--text-dim)]" />
+                </Link>
+              </Button>
+            )}
+
+            {/* Switch to Admin Console if user is Admin or Super Admin */}
             {isAdmin && (
-              <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex rounded-xl border-indigo-200/60 dark:border-indigo-800/60 bg-indigo-50/50 dark:bg-indigo-950/30 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100/60">
+              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex h-9 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 gap-1.5">
                 <Link href="/admin">
-                  <Shield size={13} className="text-indigo-500 mr-1.5" />
+                  <Shield size={14} />
                   <span>Admin Console</span>
                 </Link>
               </Button>
             )}
 
-            <Button size="sm" asChild className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-xs font-semibold text-white shadow-xs hover:brightness-105">
-              <Link
-                href={`/c/${profile?.slug || 'deepak-kumar'}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span>Live Card</span>
-                <ArrowUpRight size={13} className="ml-1" />
-              </Link>
-            </Button>
+            <ThemeToggle />
 
-            {/* User status & Sign Out */}
-            {user && !isDemo ? (
-              <div className="flex items-center gap-2 pl-1 border-l border-[var(--border-subtle)]">
-                <div className="hidden md:flex flex-col items-end">
-                  <span className="text-xs font-semibold text-[var(--text-primary)] leading-tight">
-                    {displayName}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-[var(--text-muted)] font-mono">{user.email}</span>
-                    <span className="text-[9px] uppercase px-1 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-semibold">
-                      {role || 'member'}
-                    </span>
-                  </div>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSignOut}
-                  title="Sign out of Member Portal"
-                  className="rounded-xl h-8 px-2.5 text-xs text-[var(--text-secondary)] hover:text-rose-600 hover:border-rose-200 dark:hover:border-rose-900/60"
-                >
-                  <LogOut size={13} className="sm:mr-1" />
-                  <span className="hidden sm:inline">Sign Out</span>
-                </Button>
+            {/* User Profile Capsule */}
+            <div className="flex items-center gap-2.5 pl-2 border-l border-[var(--border-subtle)]">
+              <div className="flex flex-col text-right hidden sm:flex">
+                <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[130px]">
+                  {displayName}
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                  {roleLabel}
+                </span>
               </div>
-            ) : (
-              <Button size="sm" asChild variant="gradient" className="rounded-xl text-xs h-8">
-                <Link href="/">
-                  <LogIn size={13} className="mr-1.5" />
-                  <span>Sign In</span>
-                </Link>
-              </Button>
-            )}
 
-            {/* Theme Toggle */}
-            <div className="flex items-center pl-1">
-              <ThemeToggle />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                className="h-8 rounded-xl border-[var(--border-card)] px-2.5 text-xs text-[var(--text-secondary)] hover:text-rose-600 hover:border-rose-200 dark:hover:border-rose-900 transition-colors shadow-xs"
+                title="Sign out of ContactForge"
+              >
+                <LogOut size={13} className="sm:mr-1" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </Button>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Mobile Nav Strip */}
-      <div className="lg:hidden border-t border-[var(--border-subtle)] bg-[var(--bg-sheet)]/60 px-4 py-2">
-        <nav className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5" aria-label="Mobile Portal Navigation">
+        {/* Mobile Navigation Bar */}
+        <div className="flex lg:hidden overflow-x-auto py-2.5 gap-1.5 border-t border-[var(--border-subtle)] no-scrollbar">
           {navItems.map((item) => {
             const Icon = item.icon
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-all ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs transition-colors ${
                   item.active
-                    ? 'bg-emerald-600 text-white font-semibold shadow-xs'
-                    : 'text-[var(--text-secondary)] bg-[var(--bg-card)] border border-[var(--border-card)] font-medium hover:text-[var(--text-primary)]'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-200/60 dark:border-emerald-800/60'
+                    : 'text-[var(--text-secondary)] font-medium hover:bg-[var(--border-subtle)]'
                 }`}
               >
-                <Icon size={13} />
+                <Icon size={14} />
                 <span>{item.label}</span>
               </Link>
             )
           })}
-          {isAdmin && (
-            <Link
-              href="/admin"
-              className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/50 dark:border-indigo-800/50"
-            >
-              <Shield size={12} />
-              <span>Admin Console</span>
-            </Link>
-          )}
-          {user && (
-            <button
-              onClick={handleSignOut}
-              className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border border-rose-200/60 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
-            >
-              <LogOut size={12} />
-              <span>Out</span>
-            </button>
-          )}
-        </nav>
+        </div>
       </div>
     </header>
   )
